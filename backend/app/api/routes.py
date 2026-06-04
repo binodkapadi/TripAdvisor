@@ -414,21 +414,22 @@ async def auth_linkedin_callback(code: str | None = None, error: str | None = No
 
     base_url = get_base_url()
     user_info = await oauth_service.get_linkedin_user_info(code, f"{base_url}/api/auth/linkedin/callback")
-    email = user_info.get("email") or f"{user_info.get('id')}@linkedin.local"
-    name = f"{user_info.get('firstName', '')} {user_info.get('lastName', '')}".strip()
+    email = user_info.get("email") or f"{user_info.get('sub')}@linkedin.local"
+    name = user_info.get("name", "")
+    picture = user_info.get("picture", "")
     user = await get_user_by_email(email)
     if not user:
         user_id = await create_user(
             email=email,
             full_name=name,
             password="",
-            profile_image_base64=user_info.get("profilePicture"),
+            profile_image_base64=picture,
         )
         user = {
             "_id": user_id,
             "email": email,
             "fullName": name,
-            "profileImageBase64": user_info.get("profilePicture"),
+            "profileImageBase64": picture,
         }
     else:
         # Update user with LinkedIn profile info if missing
@@ -437,7 +438,7 @@ async def auth_linkedin_callback(code: str | None = None, error: str | None = No
             {"_id": user["_id"]},
             {"$set": {
                 "fullName": user.get("fullName") or name,
-                "profileImageBase64": user_info.get("profilePicture"),
+                "profileImageBase64": picture,
                 "updatedAt": datetime.now(timezone.utc)
             }}
         )

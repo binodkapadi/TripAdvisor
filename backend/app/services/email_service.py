@@ -357,10 +357,11 @@ class EmailService:
         }
         
         # We need EMAIL_FROM set, fallback to a sensible default if it's missing in prod
-        sender_email = settings.EMAIL_FROM or "noreply@tripadvisor.com"
+        sender_email = getattr(settings, "SENDER_EMAIL", None) or settings.EMAIL_FROM or "noreply@tripadvisor.com"
+        sender_name = getattr(settings, "SENDER_NAME", "TripAdvisor")
         
         payload = {
-            "sender": {"email": sender_email, "name": "TripAdvisor"},
+            "sender": {"email": sender_email, "name": sender_name},
             "to": [{"email": to_email}],
             "subject": subject,
             "textContent": body_text

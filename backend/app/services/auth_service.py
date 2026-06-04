@@ -127,34 +127,16 @@ class OAuthService:
             token_response.raise_for_status()
             token_data = token_response.json()
             
-            # Get user info
-            user_info_url = "https://api.linkedin.com/v2/people"
+            # Get user info using the newer OpenID Connect endpoint
+            user_info_url = "https://api.linkedin.com/v2/userinfo"
             headers = {
                 "Authorization": f"Bearer {token_data['access_token']}"
             }
             
-            params = {
-                "fields": "id,firstName,lastName,profilePicture(displayImage~:playableStreams)"
-            }
-            
-            user_response = await client.get(user_info_url, headers=headers, params=params)
+            user_response = await client.get(user_info_url, headers=headers)
             user_response.raise_for_status()
             
             user_data = user_response.json()
-            
-            # Get email
-            email_url = "https://api.linkedin.com/v2/emailAddress"
-            email_params = {
-                "q": "members",
-                "fields": "emailAddress"
-            }
-            
-            email_response = await client.get(email_url, headers=headers, params=email_params)
-            email_response.raise_for_status()
-            
-            email_data = email_response.json()
-            if email_data.get("elements"):
-                user_data["email"] = email_data["elements"][0]["emailAddress"]
             
             return user_data
 
