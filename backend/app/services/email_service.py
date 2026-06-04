@@ -387,7 +387,8 @@ class EmailService:
 
         def _send():
             msg = EmailMessage()
-            msg["From"] = settings.EMAIL_FROM
+            sender_name = getattr(settings, "SENDER_NAME", "TripAdvisor")
+            msg["From"] = f"{sender_name} <{settings.EMAIL_FROM}>"
             msg["To"] = to_email
             msg["Subject"] = subject
             msg.set_content(body_text)

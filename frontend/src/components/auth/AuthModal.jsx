@@ -52,6 +52,22 @@ export default function AuthModal({ open, mode, setMode, onClose }) {
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false)
   const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false)
 
+  // Resend Timer State
+  const [resendTimer, setResendTimer] = useState(0)
+
+  // Timer Effect
+  useEffect(() => {
+    let interval = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (interval) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
   // Scrollable container ref
   const scrollContainerRef = useRef(null)
 
@@ -156,6 +172,7 @@ export default function AuthModal({ open, mode, setMode, onClose }) {
     try {
       await sendSignupCode(signupForm.email.trim(), signupForm.fullName)
       setSignupStage('verification')
+      setResendTimer(60)
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Failed to send verification code')
     } finally {
@@ -193,6 +210,7 @@ export default function AuthModal({ open, mode, setMode, onClose }) {
     try {
       await sendResetCode(forgotEmail)
       setForgotStep('code')
+      setResendTimer(60)
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Failed to send reset code')
     } finally {
@@ -634,36 +652,45 @@ export default function AuthModal({ open, mode, setMode, onClose }) {
                               Creating Account...
                             </>
                           ) : (
-                            'Create Account'
+                            'Verify & Create Account'
                           )}
                         </button>
 
-                        <div className="flex justify-between items-center pt-2">
+                        <div className="text-center pt-2 mt-2">
+                          <p className="text-[color:var(--text-soft)] text-sm mb-1">Didn't receive the code?</p>
+                          {resendTimer > 0 ? (
+                            <p className="text-indigo-600 font-bold text-sm">Resend in {resendTimer}s</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setError(null)
+                                setLoading(true)
+                                try {
+                                  await sendSignupCode(signupForm.email.trim(), signupForm.fullName)
+                                  setSignupOtp('')
+                                  setResendTimer(60)
+                                } catch (err) {
+                                  setError(err?.response?.data?.detail || err?.message || 'Failed to resend code')
+                                } finally {
+                                  setLoading(false)
+                                }
+                              }}
+                              className="text-indigo-600 hover:text-indigo-500 font-bold text-sm hover:underline transition-colors cursor-pointer"
+                              disabled={loading}
+                            >
+                              Resend Code
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex justify-center pt-3 border-t border-[color:var(--glass-border)] mt-4">
                           <button
                             type="button"
                             onClick={() => setSignupStage('details')}
                             className="text-orange-400 hover:text-orange-300 font-semibold text-sm hover:underline transition-colors cursor-pointer"
                           >
                             Back to Details
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setError(null)
-                              setLoading(true)
-                              try {
-                                await sendSignupCode(signupForm.email.trim(), signupForm.fullName)
-                                setSignupOtp('')
-                              } catch (err) {
-                                setError(err?.response?.data?.detail || err?.message || 'Failed to resend code')
-                              } finally {
-                                setLoading(false)
-                              }
-                            }}
-                            className="text-orange-400 hover:text-orange-300 font-semibold text-sm hover:underline transition-colors cursor-pointer"
-                            disabled={loading}
-                          >
-                            Resend Code
                           </button>
                         </div>
                       </form>
@@ -848,13 +875,43 @@ export default function AuthModal({ open, mode, setMode, onClose }) {
                           )}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setMode('signin')}
-                          className="w-full text-center text-orange-400 hover:text-orange-300 font-semibold text-sm hover:underline transition-colors mt-2 cursor-pointer"
-                        >
-                          Back to Sign In
-                        </button>
+                        <div className="text-center pt-2 mt-2">
+                          <p className="text-[color:var(--text-soft)] text-sm mb-1">Didn't receive the code?</p>
+                          {resendTimer > 0 ? (
+                            <p className="text-indigo-600 font-bold text-sm">Resend in {resendTimer}s</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setError(null)
+                                setLoading(true)
+                                try {
+                                  await sendResetCode(forgotEmail)
+                                  setForgotOtp('')
+                                  setResendTimer(60)
+                                } catch (err) {
+                                  setError(err?.response?.data?.detail || err?.message || 'Failed to resend code')
+                                } finally {
+                                  setLoading(false)
+                                }
+                              }}
+                              className="text-indigo-600 hover:text-indigo-500 font-bold text-sm hover:underline transition-colors cursor-pointer"
+                              disabled={loading}
+                            >
+                              Resend Code
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex justify-center pt-3 border-t border-[color:var(--glass-border)] mt-4">
+                          <button
+                            type="button"
+                            onClick={() => setMode('signin')}
+                            className="text-orange-400 hover:text-orange-300 font-semibold text-sm hover:underline transition-colors cursor-pointer"
+                          >
+                            Back to Sign In
+                          </button>
+                        </div>
                       </form>
                     )}
                   </div>
