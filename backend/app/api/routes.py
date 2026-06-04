@@ -31,6 +31,18 @@ from ..core.rate_limiter import limiter
 router = APIRouter()
 
 
+def get_base_url() -> str:
+    if settings.is_production:
+        return "https://tripadvisor-binodkapadi.onrender.com"
+    return settings.BASE_URL
+
+
+def get_frontend_url() -> str:
+    if settings.is_production:
+        return "https://binodkapaditripadvisor.netlify.app"
+    return settings.FRONTEND_URL
+
+
 @router.get("/")
 async def root() -> dict[str, str]:
     return {"message": "TripAdvisor API is running properly 🚀"}
@@ -172,7 +184,7 @@ async def auth_send_code(req: SendCodeRequest, request: Request) -> dict[str, An
         body_html = get_password_reset_email_html(full_name, code)
 
     try:
-        send_email(req.email, subject, body_text, body_html)
+        await send_email(req.email, subject, body_text, body_html)
         print(f"Email sent successfully to {req.email}")
     except Exception as e:
         # For development: if email fails, still return success but log the code
@@ -263,9 +275,10 @@ async def auth_login(req: LoginRequest, request: Request) -> dict[str, str]:
 
 @router.get("/api/auth/google")
 async def auth_google_login():
+    base_url = get_base_url()
     redirect_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
-        f"&redirect_uri={settings.BASE_URL}/api/auth/google/callback"
+        f"&redirect_uri={base_url}/api/auth/google/callback"
         f"&scope=openid%20email%20profile&response_type=code"
     )
     return RedirectResponse(url=redirect_url)
@@ -281,7 +294,8 @@ async def auth_google_callback(code: str | None = None, error: str | None = None
             detail="Google callback is missing the authorization code. Verify the redirect URI in your Google OAuth settings.",
         )
 
-    user_info = await oauth_service.get_google_user_info(code, f"{settings.BASE_URL}/api/auth/google/callback")
+    base_url = get_base_url()
+    user_info = await oauth_service.get_google_user_info(code, f"{base_url}/api/auth/google/callback")
     user = await get_user_by_email(user_info["email"])
     if not user:
         user_id = await create_user(
@@ -313,14 +327,16 @@ async def auth_google_callback(code: str | None = None, error: str | None = None
         "email": user["email"], 
         "fullName": user.get("fullName") or user_info.get("name", "")
     })
-    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/google/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url()
+    return RedirectResponse(f"{frontend_url}/auth/google/callback?accessToken={access_token}")
 
 
 @router.get("/api/auth/github")
 async def auth_github_login():
+    base_url = get_base_url()
     redirect_url = (
         f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}"
-        f"&redirect_uri={settings.BASE_URL}/api/auth/github/callback&scope=user:email"
+        f"&redirect_uri={base_url}/api/auth/github/callback&scope=user:email"
     )
     return RedirectResponse(url=redirect_url)
 
@@ -335,7 +351,8 @@ async def auth_github_callback(code: str | None = None, error: str | None = None
             detail="GitHub callback is missing the authorization code. Verify the redirect URI in your GitHub OAuth settings.",
         )
 
-    user_info = await oauth_service.get_github_user_info(code, f"{settings.BASE_URL}/api/auth/github/callback")
+    base_url = get_base_url()
+    user_info = await oauth_service.get_github_user_info(code, f"{base_url}/api/auth/github/callback")
     email = user_info.get("email") or f"{user_info['id']}@github.local"
     user = await get_user_by_email(email)
     if not user:
@@ -368,16 +385,18 @@ async def auth_github_callback(code: str | None = None, error: str | None = None
         "email": user["email"], 
         "fullName": user.get("fullName") or user_info.get("name") or user_info.get("login", "")
     })
-    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/github/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url()
+    return RedirectResponse(f"{frontend_url}/auth/github/callback?accessToken={access_token}")
 
 
 @router.get("/api/auth/linkedin")
 async def auth_linkedin_login():
+    base_url = get_base_url()
     redirect_url = (
         f"https://www.linkedin.com/oauth/v2/authorization"
         f"?response_type=code"
         f"&client_id={settings.LINKEDIN_CLIENT_ID}"
-        f"&redirect_uri={settings.BASE_URL}/api/auth/linkedin/callback"
+        f"&redirect_uri={base_url}/api/auth/linkedin/callback"
         f"&scope=openid%20profile%20email"
     )
     return RedirectResponse(url=redirect_url)
@@ -393,7 +412,8 @@ async def auth_linkedin_callback(code: str | None = None, error: str | None = No
             detail="LinkedIn callback is missing the authorization code. Verify the redirect URI in your LinkedIn OAuth settings.",
         )
 
-    user_info = await oauth_service.get_linkedin_user_info(code, f"{settings.BASE_URL}/api/auth/linkedin/callback")
+    base_url = get_base_url()
+    user_info = await oauth_service.get_linkedin_user_info(code, f"{base_url}/api/auth/linkedin/callback")
     email = user_info.get("email") or f"{user_info.get('id')}@linkedin.local"
     name = f"{user_info.get('firstName', '')} {user_info.get('lastName', '')}".strip()
     user = await get_user_by_email(email)
@@ -427,7 +447,8 @@ async def auth_linkedin_callback(code: str | None = None, error: str | None = No
         "email": user["email"], 
         "fullName": user.get("fullName") or name
     })
-    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/linkedin/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url()
+    return RedirectResponse(f"{frontend_url}/auth/linkedin/callback?accessToken={access_token}")
 
 
 @router.get("/api/user/trips/latest")
@@ -677,7 +698,7 @@ async def share_video(payload: ShareVideoRequest, request: Request) -> dict[str,
 
     # Notify admin email.
     subject = "TripAdvisor: shared trip link"
-    send_email(
+    await send_email(
         settings.NOTIFY_EMAIL,
         subject,
         f"A user shared a trip link:\n\n{url}\n\n(Stored in shared_videos collection.)",

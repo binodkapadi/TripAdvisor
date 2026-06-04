@@ -4,6 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    ENVIRONMENT: str = "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
     # Mongo
     MONGODB_URI: str
     MONGODB_DBNAME: str
@@ -11,6 +17,9 @@ class Settings(BaseSettings):
     # Base URL for OAuth redirects
     BASE_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:5173"
+
+    # Brevo
+    BREVO_API_KEY: str | None = None
 
     # SerpAPI
     SERPAPI_KEY: str | None = None
