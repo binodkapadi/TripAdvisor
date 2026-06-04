@@ -1,0 +1,229 @@
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { createApiClient } from '../lib/apiClient.js'
+import { Bot, X, Send, User, ChevronDown } from 'lucide-react'
+import { useAuth } from '../state/auth/AuthProvider.jsx'
+
+// Simple Markdown parser for basic chat formatting
+function FormattedMessage({ text }) {
+  // A very basic parser for **bold** and newlines
+  const renderText = (str) => {
+    const parts = str.split(/(\*\*.*?\*\*)/g)
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-semibold text-[color:var(--text)]">{part.slice(2, -2)}</strong>
+      }
+      return part
+    })
+  }
+
+  return (
+    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+      {renderText(text)}
+    </div>
+  )
+}
+
+export default function ChatAssistant({ itineraryId }) {
+  const { user } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
+  const [input, setInput] = useState('')
+  const defaultMessage = { type: 'assistant', content: "Hi! I'm your AI Travel Copilot. 🌍\nHow can I help you with your itinerary today?" }
+  const [messages, setMessages] = useState([defaultMessage])
+  const [loading, setLoading] = useState(false)
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom()
+    }
+  }, [messages, isOpen, user, itineraryId])
+
+  // Fetch history from backend or clear if missing
+  useEffect(() => {
+    if (!user || !itineraryId) {
+      setMessages([defaultMessage])
+      return
+    }
+    
+    let isMounted = true
+    const fetchHistory = async () => {
+      try {
+        const api = createApiClient()
+        const response = await api.get(`/api/ai/chat/history?itineraryId=${itineraryId}`)
+        if (isMounted) {
+          if (response.data && response.data.length > 0) {
+            setMessages([defaultMessage, ...response.data])
+          } else {
+            setMessages([defaultMessage])
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch chat history:', e)
+        if (isMounted) {
+          setMessages([defaultMessage])
+        }
+      }
+    }
+    fetchHistory()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [user, itineraryId])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!input.trim() || loading || !itineraryId || !user) return
+
+    const userMsg = input.trim()
+    setInput('')
+
+    const newMessages = [...messages, { type: 'user', content: userMsg }]
+    setMessages(newMessages)
+    setLoading(true)
+
+    try {
+      const api = createApiClient()
+      const payload = {
+        itineraryId,
+        question: userMsg,
+        history: newMessages.slice(1) // exclude the initial greeting
+      }
+
+      const response = await api.post('/api/ai/chat', payload)
+
+      setMessages(prev => [...prev, { type: 'assistant', content: response.data.answer }])
+    } catch (error) {
+      console.error('Chat error:', error)
+      setMessages(prev => [...prev, { type: 'assistant', content: "Sorry, I had trouble connecting. Please try again in a moment! 🚧" }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const displayMessages = !user
+    ? [{ type: 'assistant', content: "Please sign in to use the AI Travel Assistant." }]
+    : !itineraryId
+      ? [{ type: 'assistant', content: "Please generate a travel plan/itinerary first by clicking on Start Planning Trip to use this assistant." }]
+      : messages
+
+  return (
+    <>
+      {/* Floating Action Button */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsOpen(true)}
+            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30 transition-shadow hover:shadow-orange-500/50 cursor-pointer"
+          >
+            <Bot size={28} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-6 right-6 z-50 flex w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] shadow-2xl backdrop-blur-xl h-[550px] max-h-[calc(100vh-100px)]"
+          >
+            {/* Close Button Only */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-3 right-3 z-10 rounded-full bg-[color:var(--glass-strong)] p-2 text-[color:var(--text-muted)] transition-colors hover:bg-red-500/20 hover:text-red-400 cursor-pointer shadow-sm border border-[color:var(--glass-border)]"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 pt-14 space-y-4">
+              {displayMessages.map((msg, idx) => {
+                const isUser = msg.type === 'user'
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={idx}
+                    className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isUser && (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white shadow-sm">
+                        <Bot size={16} />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${isUser
+                        ? 'rounded-br-sm bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                        : 'rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] text-[color:var(--text-soft)]'
+                        }`}
+                    >
+                      <FormattedMessage text={msg.content} />
+                    </div>
+                    {isUser && (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500 shadow-sm dark:bg-gray-700 dark:text-gray-300">
+                        <User size={16} />
+                      </div>
+                    )}
+                  </motion.div>
+                )
+              })}
+
+              {loading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-end gap-2"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white shadow-sm">
+                    <Bot size={16} />
+                  </div>
+                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] px-4 py-4 shadow-sm">
+                    <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
+                    <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
+                    <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
+                  </div>
+                </motion.div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Form */}
+            <div className="border-t border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] p-4">
+              <form onSubmit={handleSubmit} className="relative flex items-center">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask anything about your trip..."
+                  className="w-full rounded-full border border-[color:var(--glass-border)] bg-[color:var(--glass)] py-3 pl-5 pr-12 text-sm text-[color:var(--text)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-orange-400 focus:ring-1 focus:ring-orange-400 transition-all"
+                  disabled={loading || !user || !itineraryId}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || loading || !user || !itineraryId}
+                  className="absolute right-2 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white shadow-md transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 cursor-pointer"
+                >
+                  <Send size={16} className="ml-0.5" />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}

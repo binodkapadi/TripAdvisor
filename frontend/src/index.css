@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* ---------- Global baseline (TripAdvisor UI) ---------- */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Theme variables (used by components via Tailwind opacity classes too) */
+:root {
+  color-scheme: dark;
+  --bg-0: #070a0f;
+  --bg-1: #0b1220;
+  --text: rgba(255, 255, 255, 0.92);
+  --text-muted: rgba(255, 255, 255, 0.68);
+  --text-soft: rgba(255, 255, 255, 0.80);
+
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-strong: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-hover: rgba(255, 255, 255, 0.12);
+
+  --shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --bg-0: #fff7f0;
+  --bg-1: #fff1e3;
+  --text: rgba(10, 16, 25, 0.92);
+  --text-muted: rgba(10, 16, 25, 0.62);
+  --text-soft: rgba(10, 16, 25, 0.78);
+
+  --glass: rgba(255, 255, 255, 0.70);
+  --glass-strong: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(10, 16, 25, 0.10);
+  --glass-hover: rgba(255, 255, 255, 0.92);
+
+  --shadow: 0 25px 60px rgba(10, 16, 25, 0.18);
+  --shadow-soft: 0 16px 42px rgba(10, 16, 25, 0.14);
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Rich background + DARK vignette so text stays visible */
+  background:
+    radial-gradient(900px circle at 15% 10%, rgba(255, 132, 0, 0.18), transparent 55%),
+    radial-gradient(850px circle at 88% 18%, rgba(0, 255, 255, 0.12), transparent 55%),
+    radial-gradient(900px circle at 50% 110%, rgba(255, 0, 120, 0.08), transparent 55%),
+    radial-gradient(1400px circle at 50% -30%, rgba(0, 0, 0, 0.55), transparent 55%),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 58%, rgba(0, 0, 0, 0.95) 100%);
+  background-attachment: fixed;
+}
+
+/* --- Make native form controls readable in all themes --- */
+input,
+textarea,
+select {
+  color: var(--text);
+  caret-color: var(--text);
+}
+
+select option {
+  color: var(--text);
+  background: var(--bg-1);
+}
+
+html[data-theme='light'] select option {
+  color: var(--text);
+  background: #ffffff;
+}
+
+/* If any Tailwind text-white remains, force it to follow theme in light mode */
+html[data-theme='light'] .text-white,
+html[data-theme='light'] .text-white\/90,
+html[data-theme='light'] .text-white\/80,
+html[data-theme='light'] .text-white\/75,
+html[data-theme='light'] .text-white\/70,
+html[data-theme='light'] .text-white\/60,
+html[data-theme='light'] .text-white\/50,
+html[data-theme='light'] .text-white\/40 {
+  color: var(--text) !important;
+}
+
+/* Boost readability on busy hero images */
+h1, h2 {
+  text-shadow: 0 10px 30px rgba(0,0,0,0.45);
+}
+p, span, a, label {
+  text-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+/* Better default link visibility */
+a {
+  color: inherit;
+}
+
+/* Make focus visible + nicer */
+:focus-visible {
+  outline: 2px solid rgba(255, 165, 0, 0.7);
+  outline-offset: 2px;
+}
+
+/* Subtle scrollbar (Windows/Chrome) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Utility class (optional) */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+/* Reusable modern controls */
+.ta-control {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+.ta-control:hover {
+  background: var(--glass-hover);
+}
+
+/* Force white text regardless of theme overrides */
+.text-white-forced,
+html[data-theme='light'] .text-white-forced {
+  color: #ffffff !important;
+}
