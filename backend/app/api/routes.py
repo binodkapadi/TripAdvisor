@@ -39,7 +39,7 @@ def get_base_url() -> str:
 
 def get_frontend_url() -> str:
     if settings.is_production:
-        return "https://binodkapaditripadvisor.netlify.app"
+        return "https://tripwithbinod.netlify.app"
     return settings.FRONTEND_URL
 
 
