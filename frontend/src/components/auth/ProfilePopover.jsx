@@ -63,23 +63,23 @@ export default function ProfilePopover() {
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] p-2 shadow-[var(--shadow-soft)]"
+            className="absolute right-0 top-full z-20 mt-2 w-auto min-w-[16rem] max-w-sm rounded-2xl border border-[color:var(--glass-border)] bg-profile-dropdown p-2 shadow-2xl"
           >
             <div className="px-4 py-3 border-b border-[color:var(--glass-border)] flex items-center gap-3">
               {user?.photoURL ? (
                 <img
                   src={user.photoURL}
                   alt={user.displayName}
-                  className="h-10 w-10 rounded-full object-cover ring-2 ring-[color:var(--glass-border)]"
+                  className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-[color:var(--glass-border)]"
                 />
               ) : (
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center ring-2 ring-[color:var(--glass-border)]">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center ring-2 ring-[color:var(--glass-border)]">
                   <User size={20} className="text-white" />
                 </div>
               )}
-              <div className="flex flex-col min-w-0">
+              <div className="flex flex-col min-w-0 pr-2">
                 <div className="text-sm font-semibold text-[color:var(--text)] truncate">{user?.displayName}</div>
-                <div className="text-xs text-[color:var(--text-muted)] truncate">{user?.email}</div>
+                <div className="text-xs text-[color:var(--text-muted)] break-all">{user?.email}</div>
               </div>
             </div>
 

@@ -158,3 +158,11 @@ a {
 html[data-theme='light'] .text-white-forced {
   color: #ffffff !important;
 }
+
+/* Force solid colors for profile dropdown */
+.bg-profile-dropdown {
+  background-color: #000000 !important;
+}
+html[data-theme='light'] .bg-profile-dropdown {
+  background-color: #f0ebe4 !important;
+}
