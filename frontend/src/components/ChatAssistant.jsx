@@ -164,7 +164,7 @@ export default function ChatAssistant({ itineraryId }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 right-6 z-50 flex w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] shadow-2xl backdrop-blur-xl h-[550px] max-h-[calc(100vh-100px)]"
+            className="fixed bottom-4 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-50 flex sm:w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] shadow-2xl backdrop-blur-xl h-[550px] max-h-[calc(100vh-100px)]"
           >
             {/* Header Actions */}
             <button
