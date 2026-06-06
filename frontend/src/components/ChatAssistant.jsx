@@ -31,7 +31,7 @@ export default function ChatAssistant({ itineraryId }) {
       setMessages([defaultMessage])
       return
     }
-    
+
     let isMounted = true
     const fetchHistory = async () => {
       try {
@@ -52,7 +52,7 @@ export default function ChatAssistant({ itineraryId }) {
       }
     }
     fetchHistory()
-    
+
     return () => {
       isMounted = false
     }
@@ -164,26 +164,40 @@ export default function ChatAssistant({ itineraryId }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-50 flex sm:w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] shadow-2xl backdrop-blur-xl h-[550px] max-h-[calc(100vh-100px)]"
+            className="fixed bottom-4 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-50 flex sm:w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-transparent shadow-2xl backdrop-blur-2xl h-[600px] max-h-[calc(100vh-100px)]"
           >
-            {/* Header Actions */}
+            {/* Background Layers */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+              {/* Light Mode Map Background */}
+              <div
+                className="absolute inset-0 bg-[url('/images/map_light_mode.png')] bg-cover bg-center opacity-30 dark:opacity-0 transition-opacity duration-1000"
+              />
+              {/* Dark Mode Map Background */}
+              <div
+                className="absolute inset-0 bg-[url('/images/map_dark_mode.png')] bg-cover bg-center opacity-0 dark:opacity-30 transition-opacity duration-1000"
+              />
+              {/* Overlay for readability */}
+              <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[2px]" />
+            </div>
+
+            {/* Header Actions (Fixed inside the chat box) */}
             <button
               onClick={handleClearChat}
               title="Clear Chat"
-              className="absolute top-3 left-3 z-10 rounded-full bg-[color:var(--glass-strong)] p-2 text-[color:var(--text-muted)] transition-colors hover:bg-red-500/20 hover:text-red-400 cursor-pointer shadow-sm border border-[color:var(--glass-border)]"
+              className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white-forced transition-all duration-300 hover:bg-orange-500 hover:border-orange-500 hover:scale-110 cursor-pointer shadow-sm border border-white/30 backdrop-blur-md"
             >
-              <Trash2 size={16} />
+              <Trash2 size={18} />
             </button>
             <button
               onClick={() => setIsOpen(false)}
               title="Close Chat"
-              className="absolute top-3 right-3 z-10 rounded-full bg-[color:var(--glass-strong)] p-2 text-[color:var(--text-muted)] transition-colors hover:bg-red-500/20 hover:text-red-400 cursor-pointer shadow-sm border border-[color:var(--glass-border)]"
+              className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white-forced transition-all duration-300 hover:bg-orange-500 hover:border-orange-500 hover:scale-110 cursor-pointer shadow-sm border border-white/30 backdrop-blur-md"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 pt-14 space-y-4">
+            <div className="relative z-10 flex-1 overflow-y-auto p-4 pt-20 space-y-4">
               {displayMessages.map((msg, idx) => {
                 const isUser = msg.type === 'user'
                 return (
@@ -199,25 +213,25 @@ export default function ChatAssistant({ itineraryId }) {
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm overflow-hidden ${isUser
-                        ? 'rounded-br-sm bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                        : 'rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] text-[color:var(--text-soft)] prose prose-sm dark:prose-invert'
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-md overflow-hidden relative z-10 backdrop-blur-md ${isUser
+                        ? 'rounded-br-sm bg-gradient-to-r from-orange-500/90 to-red-500/90 text-white-forced border border-white/20'
+                        : 'rounded-bl-sm border border-white/10 bg-black/60 text-white-forced prose prose-sm prose-invert'
                         }`}
                     >
                       {isUser ? (
                         <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
                       ) : (
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({node, ...props}) => <p className="mb-2 last:mb-0 text-sm leading-relaxed" {...props} />,
-                            ul: ({node, ...props}) => <ul className="mb-2 list-disc pl-4 text-sm" {...props} />,
-                            ol: ({node, ...props}) => <ol className="mb-2 list-decimal pl-4 text-sm" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold text-current" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="mb-2 mt-4 font-bold text-base" {...props} />,
-                            h4: ({node, ...props}) => <h4 className="mb-2 mt-3 font-semibold text-sm" {...props} />,
-                            a: ({node, ...props}) => <a className="text-orange-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
+                            p: ({ node, ...props }) => <p className="mb-2 last:mb-0 text-sm leading-relaxed" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="mb-2 list-disc pl-4 text-sm" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="mb-2 list-decimal pl-4 text-sm" {...props} />,
+                            li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-current" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="mb-2 mt-4 font-bold text-base" {...props} />,
+                            h4: ({ node, ...props }) => <h4 className="mb-2 mt-3 font-semibold text-sm" {...props} />,
+                            a: ({ node, ...props }) => <a className="text-orange-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
                           }}
                         >
                           {msg.content || ' '}
@@ -239,10 +253,10 @@ export default function ChatAssistant({ itineraryId }) {
                   animate={{ opacity: 1 }}
                   className="flex items-end gap-2"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white shadow-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white shadow-sm relative z-10">
                     <Bot size={16} />
                   </div>
-                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] px-4 py-4 shadow-sm">
+                  <div className="relative z-10 flex items-center gap-1 rounded-2xl rounded-bl-sm border border-white/10 bg-black/60 px-4 py-4 shadow-sm backdrop-blur-md">
                     <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
                     <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} />
                     <motion.div className="h-2 w-2 rounded-full bg-orange-400" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} />
@@ -253,14 +267,14 @@ export default function ChatAssistant({ itineraryId }) {
             </div>
 
             {/* Input Form */}
-            <div className="border-t border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] p-4">
+            <div className="relative z-10 border-t border-[color:var(--glass-border)] bg-white/50 dark:bg-black/40 p-4 backdrop-blur-md">
               <form onSubmit={handleSubmit} className="relative flex items-center">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask anything about your trip..."
-                  className="w-full rounded-full border border-[color:var(--glass-border)] bg-[color:var(--glass)] py-3 pl-5 pr-12 text-sm text-[color:var(--text)] outline-none placeholder:text-[color:var(--text-muted)] focus:border-orange-400 focus:ring-1 focus:ring-orange-400 transition-all"
+                  className="w-full rounded-full border border-white/20 bg-black/40 py-3 pl-5 pr-12 text-sm text-white-forced outline-none placeholder:text-white/50 focus:border-orange-400 focus:ring-1 focus:ring-orange-400 transition-all backdrop-blur-sm"
                   disabled={loading || !user || !itineraryId}
                 />
                 <button
