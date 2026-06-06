@@ -1,28 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createApiClient } from '../lib/apiClient.js'
-import { Bot, X, Send, User, ChevronDown } from 'lucide-react'
+import { Bot, X, Send, User, ChevronDown, Trash2 } from 'lucide-react'
 import { useAuth } from '../state/auth/AuthProvider.jsx'
-
-// Simple Markdown parser for basic chat formatting
-function FormattedMessage({ text }) {
-  // A very basic parser for **bold** and newlines
-  const renderText = (str) => {
-    const parts = str.split(/(\*\*.*?\*\*)/g)
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="font-semibold text-[color:var(--text)]">{part.slice(2, -2)}</strong>
-      }
-      return part
-    })
-  }
-
-  return (
-    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-      {renderText(text)}
-    </div>
-  )
-}
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export default function ChatAssistant({ itineraryId }) {
   const { user } = useAuth()
@@ -76,6 +58,17 @@ export default function ChatAssistant({ itineraryId }) {
     }
   }, [user, itineraryId])
 
+  const handleClearChat = async () => {
+    if (!user || !itineraryId) return
+    try {
+      const api = createApiClient()
+      await api.delete(`/api/ai/chat/history?itineraryId=${itineraryId}`)
+      setMessages([defaultMessage])
+    } catch (e) {
+      console.error('Failed to clear chat history:', e)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!input.trim() || loading || !itineraryId || !user) return
@@ -84,23 +77,55 @@ export default function ChatAssistant({ itineraryId }) {
     setInput('')
 
     const newMessages = [...messages, { type: 'user', content: userMsg }]
-    setMessages(newMessages)
+    setMessages([...newMessages, { type: 'assistant', content: '' }])
     setLoading(true)
 
     try {
-      const api = createApiClient()
-      const payload = {
-        itineraryId,
-        question: userMsg,
-        history: newMessages.slice(1) // exclude the initial greeting
+      // Use standard fetch for streaming
+      const token = localStorage.getItem('authToken') || ''
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+      const response = await fetch(`${baseUrl}/api/ai/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          itineraryId,
+          question: userMsg,
+          history: newMessages.slice(1) // exclude the initial greeting
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
       }
 
-      const response = await api.post('/api/ai/chat', payload)
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let done = false
+      let fullAssistantMsg = ''
 
-      setMessages(prev => [...prev, { type: 'assistant', content: response.data.answer }])
+      while (!done) {
+        const { value, done: readerDone } = await reader.read()
+        done = readerDone
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true })
+          fullAssistantMsg += chunk
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[updated.length - 1] = { type: 'assistant', content: fullAssistantMsg }
+            return updated
+          })
+        }
+      }
     } catch (error) {
       console.error('Chat error:', error)
-      setMessages(prev => [...prev, { type: 'assistant', content: "Sorry, I had trouble connecting. Please try again in a moment! 🚧" }])
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { type: 'assistant', content: "Sorry, I had trouble connecting. Please try again in a moment! 🚧" }
+        return updated
+      })
     } finally {
       setLoading(false)
     }
@@ -141,9 +166,17 @@ export default function ChatAssistant({ itineraryId }) {
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-6 right-6 z-50 flex w-[380px] flex-col overflow-hidden rounded-3xl border border-[color:var(--glass-border)] bg-[color:var(--glass)] shadow-2xl backdrop-blur-xl h-[550px] max-h-[calc(100vh-100px)]"
           >
-            {/* Close Button Only */}
+            {/* Header Actions */}
+            <button
+              onClick={handleClearChat}
+              title="Clear Chat"
+              className="absolute top-3 left-3 z-10 rounded-full bg-[color:var(--glass-strong)] p-2 text-[color:var(--text-muted)] transition-colors hover:bg-red-500/20 hover:text-red-400 cursor-pointer shadow-sm border border-[color:var(--glass-border)]"
+            >
+              <Trash2 size={16} />
+            </button>
             <button
               onClick={() => setIsOpen(false)}
+              title="Close Chat"
               className="absolute top-3 right-3 z-10 rounded-full bg-[color:var(--glass-strong)] p-2 text-[color:var(--text-muted)] transition-colors hover:bg-red-500/20 hover:text-red-400 cursor-pointer shadow-sm border border-[color:var(--glass-border)]"
             >
               <X size={16} />
@@ -166,12 +199,30 @@ export default function ChatAssistant({ itineraryId }) {
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${isUser
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm overflow-hidden ${isUser
                         ? 'rounded-br-sm bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                        : 'rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] text-[color:var(--text-soft)]'
+                        : 'rounded-bl-sm border border-[color:var(--glass-border)] bg-[color:var(--glass-strong)] text-[color:var(--text-soft)] prose prose-sm dark:prose-invert'
                         }`}
                     >
-                      <FormattedMessage text={msg.content} />
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
+                      ) : (
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({node, ...props}) => <p className="mb-2 last:mb-0 text-sm leading-relaxed" {...props} />,
+                            ul: ({node, ...props}) => <ul className="mb-2 list-disc pl-4 text-sm" {...props} />,
+                            ol: ({node, ...props}) => <ol className="mb-2 list-decimal pl-4 text-sm" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold text-current" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="mb-2 mt-4 font-bold text-base" {...props} />,
+                            h4: ({node, ...props}) => <h4 className="mb-2 mt-3 font-semibold text-sm" {...props} />,
+                            a: ({node, ...props}) => <a className="text-orange-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
+                          }}
+                        >
+                          {msg.content || ' '}
+                        </ReactMarkdown>
+                      )}
                     </div>
                     {isUser && (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500 shadow-sm dark:bg-gray-700 dark:text-gray-300">

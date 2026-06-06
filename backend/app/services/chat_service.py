@@ -15,7 +15,7 @@ def _tokenize(q: str) -> list[str]:
     return [p for p in parts if len(p) >= 3][:40]
 
 
-async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None) -> str:
+async def _build_rag_prompt(user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None) -> str:
     await mongo.connect()
     print(f"Looking for itinerary with ID: {itinerary_id}")
     
@@ -24,8 +24,6 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
         print(f"Itinerary not found for ID: {itinerary_id}")
         raise RuntimeError("Itinerary not found")
 
-    print(f"Itinerary found: {itinerary_id}")
-    
     trip = await mongo.collection("trips").find_one({"itineraryId": itinerary_id})
     trip_form = trip.get("form", {}) if trip else {}
     origin = trip_form.get("origin", "Unknown")
@@ -36,10 +34,7 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
     optimized = data.get("optimizedItinerary") or {}
     days: list[str] = optimized.get("days") or []
     
-    print(f"Found {len(days)} days in itinerary")
-
     tokens = _tokenize(question)
-    print(f"Question tokens: {tokens}")
     
     scored: list[tuple[int, str]] = []
     for day in days:
@@ -50,12 +45,11 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
     top_days = [d for _, d in scored[:3] if d][:3]
 
     context = "\n\n".join(top_days) if top_days else "\n".join(days[:2])
-    print(f"Context length: {len(context)} characters")
     
     history_str = ""
     if history:
         history_str = "\nConversation History:\n"
-        for msg in history[-6:]: # Keep last 6 messages
+        for msg in history[-6:]:
             role = "User" if msg.get("type") == "user" else "Assistant"
             history_str += f"{role}: {msg.get('content')}\n"
 
@@ -95,6 +89,9 @@ CORE RESPONSIBILITIES:
 * Prioritize actionable travel guidance (cost predictions, safety, weather, transport)
 * Maintain a modern UI/UX format in your response—never robotic
 
+RESTRICTIONS:
+If the user asks a question completely unrelated to travel or their itinerary, politely decline to answer and guide them back to their trip.
+
 UI/UX FORMATTING:
 Your response will be rendered in a modern glassmorphism UI. Make it visually appealing with markdown.
 Use short paragraphs, lists, and emojis appropriately.
@@ -121,10 +118,15 @@ The user is asking about their trip. Here is relevant context from their itinera
 Current User Question:
 {question}
 """
+    return prompt
 
+async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None) -> str:
+    prompt = await _build_rag_prompt(user_id, itinerary_id, question, history)
+    
     print(f"Sending prompt to Gemini ({len(prompt)} characters) with web search enabled")
     
     try:
+        from .gemini_client import generate_text
         answer = await generate_text(prompt, use_search=True)
         print(f"Gemini response length: {len(answer)}")
         
@@ -142,4 +144,29 @@ Current User Question:
     except Exception as e:
         print(f"Error generating response: {str(e)}")
         raise
+
+async def rag_answer_stream(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None):
+    prompt = await _build_rag_prompt(user_id, itinerary_id, question, history)
+    
+    from .gemini_client import async_stream_text
+    
+    full_answer = ""
+    try:
+        async for chunk in async_stream_text(prompt, use_search=True):
+            full_answer += chunk
+            yield chunk
+            
+        await mongo.collection("chat_logs").insert_one(
+            {
+                "userId": user_id,
+                "itineraryId": itinerary_id,
+                "question": question,
+                "answer": full_answer,
+                "createdAt": datetime.now(timezone.utc),
+            }
+        )
+    except Exception as e:
+        print(f"Error streaming response: {str(e)}")
+        yield " Sorry, I had trouble connecting. Please try again in a moment! 🚧"
+
 

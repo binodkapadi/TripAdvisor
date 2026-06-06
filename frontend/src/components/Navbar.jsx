@@ -55,9 +55,9 @@ export default function Navbar({ isHome }) {
           >
             <span className="text-xl">✈︎</span>
           </motion.div>
-          <div className="hidden leading-tight md:block">
+          <div className="leading-tight">
             <div className="text-sm font-semibold text-[color:var(--text)]">TripAdvisor</div>
-            <div className="text-xs text-[color:var(--text-muted)]">AI-powered travel planning</div>
+            <div className="hidden text-xs text-[color:var(--text-muted)] md:block">AI-powered travel planning</div>
           </div>
         </Link>
 
@@ -77,7 +77,7 @@ export default function Navbar({ isHome }) {
         {/* Right Controls */}
         <div className="flex items-center gap-2 md:gap-3">
           {user ? (
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <ProfilePopover />
             </div>
           ) : (

@@ -75,3 +75,53 @@ async def generate_text(prompt: str, use_search: bool = False) -> str:
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
 
+
+async def _stream_generate_once(model: str, prompt: str, use_search: bool = False):
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is missing in environment")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
+    params = {"key": settings.GEMINI_API_KEY}
+
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.7,
+            "topP": 0.9,
+            "maxOutputTokens": 2048,
+        },
+    }
+
+    if use_search:
+        payload["tools"] = [{"googleSearch": {}}]
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        async with client.stream("POST", url, params=params, json=payload) as r:
+            r.raise_for_status()
+            async for line in r.aiter_lines():
+                if line.startswith("data: "):
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        continue
+                    try:
+                        data = json.loads(data_str)
+                        if "candidates" in data and len(data["candidates"]) > 0:
+                            content = data["candidates"][0].get("content", {})
+                            parts = content.get("parts", [])
+                            if parts:
+                                yield parts[0].get("text", "")
+                    except Exception as e:
+                        print(f"Error parsing SSE chunk: {e}")
+
+
+async def async_stream_text(prompt: str, use_search: bool = False):
+    last_err: Exception | None = None
+    for model in _models():
+        try:
+            async for chunk in _stream_generate_once(model, prompt, use_search=use_search):
+                yield chunk
+            return
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or RuntimeError("Gemini streaming failed for all models")

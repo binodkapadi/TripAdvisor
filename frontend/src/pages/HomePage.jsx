@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 
-import homeImg from '../images/home1.jpg'
+import homeImg from '../images/home1.png'
 import { createApiClient } from '../lib/apiClient.js'
 import { useAuth } from '../state/auth/AuthProvider.jsx'
+import { Map, Route, ShieldCheck, Send } from 'lucide-react'
 
 const travelerQuotes = [
   'Travel is the only thing you buy that makes you richer.',
@@ -106,13 +107,46 @@ export default function HomePage() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <motion.button
-              className="rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-400 to-red-500 px-8 py-3.5 text-base font-semibold text-white shadow-md transition hover:brightness-110"
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleStartPlanning}
             >
+              <Send size={18} />
               Start Planning Trip →
             </motion.button>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-3xl">
+            <div className="flex items-center gap-3 rounded-2xl bg-black/40 backdrop-blur-md p-3 pr-6 ring-1 ring-white/10 transition hover:bg-black/50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/10 text-orange-200">
+                <Map size={24} />
+              </div>
+              <div className="text-left leading-tight">
+                <div className="text-sm font-bold text-white">AI-Powered</div>
+                <div className="text-xs text-slate-300">Recommendations</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 rounded-2xl bg-black/40 backdrop-blur-md p-3 pr-6 ring-1 ring-white/10 transition hover:bg-black/50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/10 text-orange-200">
+                <Route size={24} />
+              </div>
+              <div className="text-left leading-tight">
+                <div className="text-sm font-bold text-white">Custom</div>
+                <div className="text-xs text-slate-300">Itineraries</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl bg-black/40 backdrop-blur-md p-3 pr-6 ring-1 ring-white/10 transition hover:bg-black/50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/10 text-orange-200">
+                <ShieldCheck size={24} />
+              </div>
+              <div className="text-left leading-tight">
+                <div className="text-sm font-bold text-white">Smart & Hassle</div>
+                <div className="text-xs text-slate-300">Free Planning</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -157,7 +191,7 @@ export default function HomePage() {
             <div className="mt-1 text-xs text-[color:var(--text-muted)]">Modify your itinerary anytime and chat with the AI assistant for recommendations and answers.</div>
           </motion.div>
         </div>
-        
+
       </SectionShell>
 
       <SectionShell id="share" title="Share Your Trip">

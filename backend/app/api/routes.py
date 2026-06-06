@@ -671,6 +671,57 @@ async def get_chat_history(
     return messages
 
 
+@router.post("/api/ai/chat/stream")
+@limiter.limit("10/minute")
+async def ai_chat_stream(
+    req: ChatRequest,
+    request: Request,
+) -> Any:
+    # Use actual user ID if authenticated, else anonymous
+    user_id = "anonymous_user"
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            claims = await get_current_user(authorization=auth_header)
+            extracted_id = _extract_user_id(claims)
+            if extracted_id:
+                user_id = extracted_id
+        except Exception:
+            pass
+
+    print(f"Chat stream request received: user_id={user_id}, itinerary_id={req.itineraryId}, question={req.question}")
+    
+    from fastapi.responses import StreamingResponse
+    from ..services.chat_service import rag_answer_stream
+    
+    return StreamingResponse(
+        rag_answer_stream(
+            user_id=user_id,
+            itinerary_id=req.itineraryId,
+            question=req.question,
+            history=[h.model_dump() for h in req.history] if req.history else None
+        ),
+        media_type="text/plain"
+    )
+
+@router.delete("/api/ai/chat/history")
+@limiter.limit("10/minute")
+async def delete_chat_history(
+    request: Request,
+    itineraryId: str,
+    claims: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = _extract_user_id(claims)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user token")
+
+    await mongo.connect()
+    result = await mongo.collection("chat_logs").delete_many(
+        {"userId": user_id, "itineraryId": itineraryId}
+    )
+    
+    return {"ok": True, "deletedCount": result.deleted_count}
+
 @router.post("/api/share-video")
 @limiter.limit("10/minute")
 async def share_video(payload: ShareVideoRequest, request: Request) -> dict[str, Any]:
