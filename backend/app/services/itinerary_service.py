@@ -473,7 +473,7 @@ async def generate_plan(*, user_id: str, email: str, full_name: str, form: dict[
     email_sent = False
     try:
         print(f"Sending email to: {email}")
-        send_email(email, subject, body)
+        await send_email(email, subject, body)
         email_sent = True
         print("Email sent successfully")
     except Exception as e:

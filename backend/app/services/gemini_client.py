@@ -118,8 +118,12 @@ async def async_stream_text(prompt: str, use_search: bool = False):
     last_err: Exception | None = None
     for model in _models():
         try:
+            yielded_any = False
             async for chunk in _stream_generate_once(model, prompt, use_search=use_search):
+                yielded_any = True
                 yield chunk
+            if not yielded_any:
+                raise RuntimeError(f"Model {model} yielded no content.")
             return
         except Exception as e:
             last_err = e
