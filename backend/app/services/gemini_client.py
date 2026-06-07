@@ -69,9 +69,18 @@ async def generate_text(prompt: str, use_search: bool = False) -> str:
     for model in _models():
         try:
             text = await _generate_once(model, prompt, use_search=use_search)
+            if not text:
+                raise RuntimeError(f"Model {model} yielded no content.")
             return str(text).strip()
         except Exception as e:
             last_err = e
+            if use_search:
+                try:
+                    text = await _generate_once(model, prompt, use_search=False)
+                    if text:
+                        return str(text).strip()
+                except Exception as e2:
+                    last_err = e2
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
 
@@ -127,5 +136,16 @@ async def async_stream_text(prompt: str, use_search: bool = False):
             return
         except Exception as e:
             last_err = e
+            if use_search:
+                try:
+                    yielded_any = False
+                    async for chunk in _stream_generate_once(model, prompt, use_search=False):
+                        yielded_any = True
+                        yield chunk
+                    if not yielded_any:
+                        raise RuntimeError(f"Model {model} yielded no content with use_search=False.")
+                    return
+                except Exception as e2:
+                    last_err = e2
             continue
     raise last_err or RuntimeError("Gemini streaming failed for all models")

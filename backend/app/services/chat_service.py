@@ -76,6 +76,7 @@ CURRENCY INSTRUCTIONS:
 
     cost_predictor = data.get("costPredictor", "Not available")
     transport_details = data.get("transportDetails", "Not available")
+    weather_insights = data.get("weatherInsights", "Not available")
     hotels_info = "\n".join(f"- {h.get('name')} (${h.get('price')}): {h.get('location')}" for h in data.get("hotels", [])) if data.get("hotels") else "Not available"
 
     prompt = f"""
@@ -110,6 +111,9 @@ The user is asking about their trip. Here is relevant context from their itinera
 
 [TRANSPORT DETAILS]
 {transport_details}
+
+[WEATHER INSIGHTS]
+{weather_insights}
 
 [RELEVANT ITINERARY DAYS]
 {context}
