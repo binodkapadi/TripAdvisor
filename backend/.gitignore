@@ -5,14 +5,6 @@
 !.env.example
 
 # =====================
-# VIRTUAL ENVIRONMENT
-# =====================
-venv/
-env/
-.venv/
-backend/venv/
-
-# =====================
 # PYTHON CACHE FILES
 # =====================
 __pycache__/
@@ -20,3 +12,18 @@ __pycache__/
 *.pyo
 *.pyd
 *.py[cod]
+
+# Virtual environment
+venv/
+.venv/
+
+# Caches and test artifacts
+.mypy_cache/
+.pytest_cache/
+
+# Local env files
+.env
+
+# Editor directories
+.vscode/
+.idea/
