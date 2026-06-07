@@ -51,9 +51,6 @@ export default function ChatAssistant({ itineraryId }) {
         }
       } catch (e) {
         console.error('Failed to fetch chat history:', e)
-        if (isMounted) {
-          setMessages([defaultMessage])
-        }
       }
     }
     fetchHistory()
@@ -128,7 +125,7 @@ export default function ChatAssistant({ itineraryId }) {
       console.error('Chat error:', error)
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { type: 'assistant', content: "Sorry, I had trouble connecting. Please try again in a moment! 🚧" }
+        updated[updated.length - 1] = { type: 'assistant', content: "The AI service is temporarily busy. Please try again in a few moments." }
         return updated
       })
     } finally {
