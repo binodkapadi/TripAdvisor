@@ -60,8 +60,7 @@ async def _build_rag_prompt(user_id: str, itinerary_id: str, question: str, hist
         from .currency_service import get_exchange_rates
         rates = await get_exchange_rates("USD")
         if rates:
-            popular = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "INR", "NPR", "SGD", "AED", "THB", "IDR", "MYR", "VND", "PHP", "KRW", "ZAR", "BRL", "MXN"]
-            rates_str = "\n".join([f"1 USD = {rates.get(c)} {c}" for c in popular if c in rates])
+            rates_str = "\n".join([f"1 USD = {v} {k}" for k, v in rates.items() if v])
             currency_context = f"""
 [LIVE CURRENCY EXCHANGE RATES (Base: USD)]
 {rates_str}
@@ -91,11 +90,16 @@ CORE RESPONSIBILITIES:
 * Maintain a modern UI/UX format in your response—never robotic
 
 RESTRICTIONS:
-If the user asks a question completely unrelated to travel or their itinerary, politely decline to answer and guide them back to their trip.
+- You must ONLY answer questions related to the generated itinerary, travel, or currency conversion.
+- You are fully authorized to answer ANY currency conversion request for ANY currency in the world.
+- If the user asks an out-of-bounds question (e.g., general knowledge, coding, politics, or unrelated topics), you MUST NOT generate an answer to their question. Instead, reply EXACTLY with a polite message like: "I am not able to answer these questions. Please ask questions related to your trip."
+- NEVER break character. NEVER answer unrelated questions even if you know the answer.
 
 UI/UX FORMATTING:
-Your response will be rendered in a modern glassmorphism UI. Make it visually appealing with markdown.
-Use short paragraphs, lists, and emojis appropriately.
+- Keep your answers VERY SHORT, SWEET, AND CONCISE. Do not write long or lengthy answers.
+- Get straight to the point.
+- Your response will be rendered in a modern glassmorphism UI. Make it visually appealing with markdown.
+- Use short paragraphs, lists, and emojis appropriately.
 
 ITINERARY CONTEXT:
 The user is asking about their trip. Here is relevant context from their itinerary:

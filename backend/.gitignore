@@ -1,1 +1,22 @@
+# ENV FILES
+# =====================
 .env
+.env.*
+!.env.example
+
+# =====================
+# VIRTUAL ENVIRONMENT
+# =====================
+venv/
+env/
+.venv/
+backend/venv/
+
+# =====================
+# PYTHON CACHE FILES
+# =====================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]

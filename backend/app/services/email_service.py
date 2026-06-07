@@ -269,8 +269,12 @@ def get_welcome_email_html(full_name: str) -> str:
     </html>
     """
 
-def get_itinerary_email_html(full_name: str, destination: str, trip_link: str) -> str:
-    name = full_name if full_name else "Traveler"
+import re
+
+def get_itinerary_email_html(destination: str, body_text: str) -> str:
+    # Make "Day X: ..." lines bold in the HTML output
+    formatted_body = re.sub(r'^(Day \d+:.*)$', r'<strong>\1</strong>', body_text, flags=re.MULTILINE)
+    
     return f"""
     <!DOCTYPE html>
     <html>
@@ -310,6 +314,13 @@ def get_itinerary_email_html(full_name: str, destination: str, trip_link: str) -
             .content h2 {{
                 color: #00aa6c;
                 margin-top: 0;
+                margin-bottom: 25px;
+            }}
+            .itinerary-text {{
+                white-space: pre-wrap;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 15px;
+                color: #444444;
             }}
             .footer {{
                 background-color: #f4f7f6;
@@ -328,11 +339,7 @@ def get_itinerary_email_html(full_name: str, destination: str, trip_link: str) -
             </div>
             <div class="content">
                 <h2>Your Trip to {destination} is Ready!</h2>
-                <p>Hi {name},</p>
-                <p>We've generated an optimized itinerary for your trip. Click below to view it:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{trip_link}" style="background-color: #00aa6c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">View Itinerary</a>
-                </div>
+                <div class="itinerary-text">{formatted_body}</div>
             </div>
             <div class="footer">
                 <p>&copy; {datetime.now().year} TripAdvisor. All rights reserved.</p>
@@ -418,6 +425,7 @@ class EmailService:
                 print(f"Brevo API failed, falling back to SMTP: {e}")
                 await self._send_smtp(to_email, subject, body_text, body_html)
         else:
+            print(f"Environment is local/development. Sending email directly via SMTP to {to_email}")
             await self._send_smtp(to_email, subject, body_text, body_html)
 
 email_service = EmailService()

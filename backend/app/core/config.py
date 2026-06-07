@@ -30,15 +30,14 @@ class Settings(BaseSettings):
     # Gemini
     GEMINI_API_KEY: str | None = None
     GEMINI_MODELS: str = (
-        "gemini-2.5-flash,"
-        "gemini-2.0-flash,"
         "gemini-flash-latest,"
-        "gemini-3.1-flash-lite,"
-        "gemini-2.0-flash-lite,"
-        "gemini-flash-lite-latest,"
         "gemini-2.5-flash-lite-preview-09-2025,"
-        "gemini-2.5-flash-lite,"
-        "gemini-2.5-flash-preview-09-2025"
+        "gemini-flash-lite-latest,"
+        "gemini-2.5-flash,"
+        "gemini-2.5-flash-preview-09-2025,"
+        "gemini-2.0-flash,"
+        "gemini-2.0-flash-lite,"
+        "gemini-2.5-flash-lite"
     )
 
     # Email (SMTP)

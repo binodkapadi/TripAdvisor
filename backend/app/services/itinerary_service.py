@@ -12,7 +12,7 @@ from ..db.mongo import mongo
 from ..core.config import settings
 from .gemini_client import generate_json
 from .openweather_client import get_weather_insights
-from .email_service import send_email
+from .email_service import send_email, get_itinerary_email_html
 
 
 def _cache_key(payload: dict[str, Any]) -> str:
@@ -94,7 +94,7 @@ STRICT GENERATION RULES:
 - Generate REALISTIC transportation insights for {form['transportMode']} from {form['origin']} to {form['destination']}.
 - Include:
   - Whether this transport mode is available for this route.
-  - Specific operators/airline/train/bus names (if available).
+  - Specific operators/airline/train/bus/Car names (if available).
   - Approximate ticket prices (for {form['numberOfPeople']} people).
   - Typical travel duration.
   - Departure and arrival timing examples.
@@ -104,30 +104,30 @@ STRICT GENERATION RULES:
 IF TRANSPORT MODE = FLIGHT:
 - Mention:
   - Major airlines operating this route
-  - Typical ticket prices per person
+  - EXPLICITLY state "Average One-Way Price per person: $X" (USE STANDARD ECONOMY AVERAGE)
   - Flight duration
   - Example departure/arrival times
   - Best booking websites (Skyscanner, Google Flights, Booking.com, etc.)
-  - Approximate total cost for {form['numberOfPeople']} people
+  - EXPLICITLY state "Total One-Way Cost for {form['numberOfPeople']} person(s): $Y"
 
 IF TRANSPORT MODE = TRAIN:
 - Mention:
   - Train availability and frequency
   - Major train services/operators
-  - Approximate fares per person
+  - EXPLICITLY state "Average One-Way Price per person: $X" (USE STANDARD ECONOMY AVERAGE)
   - Travel duration
   - Comfort classes available
   - Best booking methods
-  - Approximate total cost for {form['numberOfPeople']} people
+  - EXPLICITLY state "Total One-Way Cost for {form['numberOfPeople']} person(s): $Y"
 
 IF TRANSPORT MODE = BUS:
 - Mention:
   - Luxury/deluxe bus availability
-  - Approximate fares per person
+  - EXPLICITLY state "Average One-Way Price per person: $X" (USE STANDARD AVERAGE)
   - Travel duration (including stops)
   - Day/night options
   - Popular bus operators
-  - Approximate total cost for {form['numberOfPeople']} people
+  - EXPLICITLY state "Total One-Way Cost for {form['numberOfPeople']} person(s): $Y"
 
 IF SELECTED TRANSPORT IS NOT AVAILABLE:
 - Clearly state: "Routes of {form['transportMode']} are not available for this route."
@@ -155,7 +155,8 @@ Hotels must:
 CRITICAL: Provide realistic nightly prices for the destination (not inflated/reduced)
 
 4. COST PREDICTOR:
-Generate a detailed cost breakdown for {form['numberOfPeople']} person(s) for {num_days} days:
+Generate a detailed cost breakdown for {form['numberOfPeople']} person(s) for {num_days} days.
+CRITICAL INSTRUCTION: ALWAYS apply average/standard economy pricing when calculating costs. Do NOT calculate based on luxury or comfort pricing unless the user's budget forces it. Always aim for the realistic average.
 
 ACCOMMODATION CALCULATION:
 - Use realistic mid-range hotel prices (avoid luxury or extremely low budget) for {form['destination']} region
@@ -182,13 +183,12 @@ SIGHTSEEING & ACTIVITIES CALCULATION:
 - Include: entrance fees, guided tours, adventure activities, experiences
 - Example format: "Sightseeing & Activities ({num_days} days, {form['numberOfPeople']} people): $X"
 
-OUTBOUND TRAVEL ({form['transportMode']}) - {form['origin']} → {form['destination']}:
-- Cost for {form['numberOfPeople']} people round-trip: $X (based on {form['transportMode']} fares)
-- Per-person rate: $Y × {form['numberOfPeople']} people
-
-RETURN TRAVEL ({form['transportMode']}) - {form['destination']} → {form['origin']}:
-- Same as or similar to outbound cost
-- Per-person rate: $Y × {form['numberOfPeople']} people
+ROUND TRIP TRAVEL ({form['transportMode']}) - {form['origin']} ↔ {form['destination']}:
+- You MUST ALWAYS calculate the ROUND TRIP cost here based on AVERAGE ECONOMY pricing.
+- Base Average One-Way Cost per person = $X
+- If 1 person: Total Round Trip = $X * 2
+- If multiple people: Total Round Trip = $X * 2 * {form['numberOfPeople']}
+- Explicitly state exactly this: "Round Trip Travel ({form['numberOfPeople']} person(s)): $TOTAL"
 
 TOTAL CALCULATION:
 - Accommodation + Meals + Local Transport + Activities + Outbound + Return
@@ -470,10 +470,14 @@ async def generate_plan(*, user_id: str, email: str, full_name: str, form: dict[
         f"Warm regards,\nTripAdvisor Team"
     )
 
+    frontend_url = "https://tripwithbinod.netlify.app" if settings.is_production else settings.FRONTEND_URL
+    trip_link = f"{frontend_url}/itinerary/{itinerary_id}"
+    body_html = get_itinerary_email_html(form['destination'], body)
+
     email_sent = False
     try:
         print(f"Sending email to: {email}")
-        await send_email(email, subject, body)
+        await send_email(email, subject, body, body_html)
         email_sent = True
         print("Email sent successfully")
     except Exception as e:
