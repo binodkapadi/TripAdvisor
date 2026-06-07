@@ -258,17 +258,14 @@ export default function Navbar({ isHome }) {
 
               {user ? (
                 <div className="mx-4 mb-4 flex flex-col gap-2">
-                  <div className="px-4 py-2 text-sm font-semibold text-orange-400">
-                    Logged in as: {user.displayName || user.email}
-                  </div>
                   <button
                     onClick={() => {
                       signOutUser()
                       setMobileMenuOpen(false)
                     }}
-                    className="rounded-2xl bg-[color:var(--glass)] px-4 py-3 text-left text-sm text-[color:var(--text-soft)] transition hover:bg-[color:var(--glass-hover)] cursor-pointer"
+                    className="rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 px-4 py-3 text-sm font-bold text-white-forced text-center cursor-pointer shadow-md"
                   >
-                    Sign out
+                    Log Out
                   </button>
                 </div>
               ) : (
@@ -278,18 +275,9 @@ export default function Navbar({ isHome }) {
                       openAuthModal('signin')
                       setMobileMenuOpen(false)
                     }}
-                    className="rounded-2xl bg-[color:var(--glass)] px-4 py-3 text-left text-sm text-[color:var(--text-soft)] transition hover:bg-[color:var(--glass-hover)] font-bold text-center cursor-pointer"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => {
-                      openAuthModal('signup')
-                      setMobileMenuOpen(false)
-                    }}
                     className="rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 px-4 py-3 text-sm font-bold text-white-forced text-center cursor-pointer shadow-md"
                   >
-                    Sign Up
+                    Sign In
                   </button>
                 </div>
               )}

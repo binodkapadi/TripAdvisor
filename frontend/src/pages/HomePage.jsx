@@ -203,7 +203,7 @@ export default function HomePage() {
         >
           <div className="mb-3 font-semibold">Share your trip link</div>
           <div className="text-xs text-[color:var(--text-muted)]">
-            Paste a link from Facebook, Youtube, Instagram, X, TikTok, Snapchat, LinkedIn, Vimo, Pinterest, Reddit, WhatsApp, Telegram, Discord. Other URLs are blocked for safety.
+            Share a link from Facebook, Youtube, Instagram, X, TikTok, Snapchat, LinkedIn, Vimo, Pinterest, Reddit, WhatsApp, Telegram, Discord. Other URLs are blocked for safety.
           </div>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
