@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
@@ -9,7 +11,21 @@ from .core.rate_limiter import limiter
 from .core.config import settings
 from .services.user_service import ensure_user_indexes
 
-app = FastAPI(title="TripAdvisor Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        # Wrap mongo connect with timeout to prevent startup blocking
+        await asyncio.wait_for(mongo.connect(), timeout=10.0)
+        await mongo.ensure_indexes()
+        await ensure_user_indexes()
+    except Exception as e:
+        print(f"Startup warning: {e}")
+    yield
+    # Shutdown
+    pass
+
+app = FastAPI(title="TripAdvisor Backend", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -34,9 +50,8 @@ async def global_exception_handler(request, exc):
 app.include_router(api_router)
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    await mongo.connect()
-    await mongo.ensure_indexes()
-    await ensure_user_indexes()
-
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)

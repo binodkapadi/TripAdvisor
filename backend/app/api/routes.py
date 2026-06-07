@@ -190,6 +190,8 @@ async def auth_send_code(req: SendCodeRequest, request: Request) -> dict[str, An
         # For development: if email fails, still return success but log the code
         print(f"Email failed but continuing: {e}")
         print(f"USE THIS VERIFICATION CODE: {code}")
+        if settings.is_production:
+            raise HTTPException(status_code=500, detail="Failed to send verification email. Please try again later.")
     
     # Also store in MongoDB for easy debugging
     print(f"Verification code stored in MongoDB: {code} for {req.email} ({purpose})")

@@ -27,7 +27,12 @@ export default function ChatAssistant({ itineraryId }) {
 
   // Fetch history from backend or clear if missing
   useEffect(() => {
-    if (!user || !itineraryId) {
+    if (!user) {
+      setIsOpen(false) // Close chat on logout
+      setMessages([defaultMessage])
+      return
+    }
+    if (!itineraryId) {
       setMessages([defaultMessage])
       return
     }

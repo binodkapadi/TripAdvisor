@@ -372,6 +372,9 @@ class EmailService:
             
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=headers, json=payload)
+            if response.status_code >= 400:
+                error_details = response.text
+                print(f"Brevo API Error ({response.status_code}): {error_details}")
             response.raise_for_status()
 
     async def _send_smtp(self, to_email: str, subject: str, body_text: str, body_html: str = None) -> None:
