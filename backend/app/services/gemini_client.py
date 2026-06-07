@@ -11,7 +11,10 @@ from ..core.config import settings
 
 
 def _models() -> list[str]:
-  return [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
+    models = [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
+    if not models:
+        models = ["gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+    return models
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -22,7 +25,7 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(stripped)
 
 
-@retry(wait=wait_exponential(min=1, max=10), stop=stop_after_attempt(2))
+@retry(wait=wait_exponential(min=2, max=20), stop=stop_after_attempt(3))
 async def _generate_once(model: str, prompt: str, use_search: bool = False) -> str:
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is missing in environment")
@@ -42,7 +45,7 @@ async def _generate_once(model: str, prompt: str, use_search: bool = False) -> s
     if use_search:
         payload["tools"] = [{"googleSearch": {}}]
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         r = await client.post(url, params=params, json=payload)
         r.raise_for_status()
         data = r.json()
@@ -104,8 +107,13 @@ async def _stream_generate_once(model: str, prompt: str, use_search: bool = Fals
     if use_search:
         payload["tools"] = [{"googleSearch": {}}]
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         async with client.stream("POST", url, params=params, json=payload) as r:
+            if r.status_code == 429:
+                import asyncio
+                print("Gemini API 429 Too Many Requests - Retrying after delay...")
+                await asyncio.sleep(5)
+                r.raise_for_status()
             r.raise_for_status()
             async for line in r.aiter_lines():
                 if line.startswith("data: "):

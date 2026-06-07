@@ -666,7 +666,9 @@ async def get_chat_history(
     
     messages = []
     for log in logs:
-        if "question" in log and "answer" in log:
+        if "role" in log and "message" in log:
+            messages.append({"type": log["role"], "content": log["message"]})
+        elif "question" in log and "answer" in log:
             messages.append({"type": "user", "content": log["question"]})
             messages.append({"type": "assistant", "content": log["answer"]})
             
@@ -693,18 +695,28 @@ async def ai_chat_stream(
 
     print(f"Chat stream request received: user_id={user_id}, itinerary_id={req.itineraryId}, question={req.question}")
     
-    from fastapi.responses import StreamingResponse
-    from ..services.chat_service import rag_answer_stream
+    from fastapi.responses import StreamingResponse, JSONResponse
+    from ..services.chat_service import prepare_rag_stream
     
-    return StreamingResponse(
-        rag_answer_stream(
+    try:
+        generator = await prepare_rag_stream(
             user_id=user_id,
             itinerary_id=req.itineraryId,
             question=req.question,
             history=[h.model_dump() for h in req.history] if req.history else None
-        ),
-        media_type="text/plain"
-    )
+        )
+        return StreamingResponse(
+            generator, 
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    except Exception as e:
+        print(f"Chat stream setup error: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": "Chat stream setup failed", "detail": str(e)})
 
 @router.delete("/api/ai/chat/history")
 @limiter.limit("10/minute")

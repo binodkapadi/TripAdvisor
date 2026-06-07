@@ -135,6 +135,17 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
     
     try:
         from .gemini_client import generate_text
+        # Save user message first
+        await mongo.collection("chat_logs").insert_one(
+            {
+                "userId": user_id,
+                "itineraryId": itinerary_id,
+                "role": "user",
+                "message": question,
+                "createdAt": datetime.now(timezone.utc),
+            }
+        )
+
         answer = await generate_text(prompt, use_search=True)
         print(f"Gemini response length: {len(answer)}")
         
@@ -142,8 +153,8 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
             {
                 "userId": user_id,
                 "itineraryId": itinerary_id,
-                "question": question,
-                "answer": answer,
+                "role": "assistant",
+                "message": answer,
                 "createdAt": datetime.now(timezone.utc),
             }
         )
@@ -153,28 +164,55 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
         print(f"Error generating response: {str(e)}")
         raise
 
-async def rag_answer_stream(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None):
+async def prepare_rag_stream(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None):
     prompt = await _build_rag_prompt(user_id, itinerary_id, question, history)
     
     from .gemini_client import async_stream_text
     
-    full_answer = ""
-    try:
-        async for chunk in async_stream_text(prompt, use_search=True):
-            full_answer += chunk
-            yield chunk
+    # Save user message first
+    await mongo.connect()
+    await mongo.collection("chat_logs").insert_one(
+        {
+            "userId": user_id,
+            "itineraryId": itinerary_id,
+            "role": "user",
+            "message": question,
+            "createdAt": datetime.now(timezone.utc),
+        }
+    )
+
+    async def stream_generator():
+        full_answer = ""
+        try:
+            async for chunk in async_stream_text(prompt, use_search=True):
+                full_answer += chunk
+                yield chunk
+                
+            if full_answer:
+                await mongo.collection("chat_logs").insert_one(
+                    {
+                        "userId": user_id,
+                        "itineraryId": itinerary_id,
+                        "role": "assistant",
+                        "message": full_answer,
+                        "createdAt": datetime.now(timezone.utc),
+                    }
+                )
+        except Exception as e:
+            print(f"Error streaming response: {str(e)}")
+            error_msg = "The AI service is temporarily busy. Please try again in a few moments."
+            yield error_msg
             
-        await mongo.collection("chat_logs").insert_one(
-            {
-                "userId": user_id,
-                "itineraryId": itinerary_id,
-                "question": question,
-                "answer": full_answer,
-                "createdAt": datetime.now(timezone.utc),
-            }
-        )
-    except Exception as e:
-        print(f"Error streaming response: {str(e)}")
-        yield " Sorry, I had trouble connecting. Please try again in a moment! 🚧"
+            await mongo.collection("chat_logs").insert_one(
+                {
+                    "userId": user_id,
+                    "itineraryId": itinerary_id,
+                    "role": "assistant",
+                    "message": error_msg,
+                    "createdAt": datetime.now(timezone.utc),
+                }
+            )
+
+    return stream_generator()
 
 
