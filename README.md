@@ -105,7 +105,7 @@ First put all required dependencies inside requirements.txt file and then run:
     # BREVO_API_KEY=your_brevo_api_key_here
     # ENVIRONMENT=production
     # SENDER_EMAIL=your_email@gmail.com
-    # SENDER_NAME = TripAdvisor\
+    # SENDER_NAME = TripAdvisor
 
 # B) Frontend Setup (React + Vite) [Open New Terminal]
 
@@ -190,6 +190,7 @@ Frontend
 * FastAPI REST APIs
 * MongoDB database integration
 * Email notifications and itinerary sending
+* Personalized AI trip recommendations based on user preferences and budget
 
 # TECHNOLOGIES USED
 
