@@ -13,7 +13,7 @@ from ..core.config import settings
 def _models() -> list[str]:
     models = [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
     if not models:
-        models = ["gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+        models = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash", "gemini-2.5-flash-lite"]
     return models
 
 
@@ -107,28 +107,48 @@ async def _stream_generate_once(model: str, prompt: str, use_search: bool = Fals
     if use_search:
         payload["tools"] = [{"googleSearch": {}}]
 
+    import asyncio
+    max_retries = 3
+    base_delay = 2
+
     async with httpx.AsyncClient(timeout=180.0) as client:
-        async with client.stream("POST", url, params=params, json=payload) as r:
-            if r.status_code == 429:
-                import asyncio
-                print("Gemini API 429 Too Many Requests - Retrying after delay...")
-                await asyncio.sleep(5)
-                r.raise_for_status()
-            r.raise_for_status()
-            async for line in r.aiter_lines():
-                if line.startswith("data: "):
-                    data_str = line[6:]
-                    if data_str == "[DONE]":
-                        continue
-                    try:
-                        data = json.loads(data_str)
-                        if "candidates" in data and len(data["candidates"]) > 0:
-                            content = data["candidates"][0].get("content", {})
-                            parts = content.get("parts", [])
-                            if parts:
-                                yield parts[0].get("text", "")
-                    except Exception as e:
-                        print(f"Error parsing SSE chunk: {e}")
+        for attempt in range(max_retries):
+            try:
+                async with client.stream("POST", url, params=params, json=payload) as r:
+                    if r.status_code == 429:
+                        if attempt < max_retries - 1:
+                            delay = base_delay * (2 ** attempt)
+                            print(f"Gemini API 429 Too Many Requests - Retrying in {delay}s...")
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            r.raise_for_status()
+                    r.raise_for_status()
+                    
+                    async for line in r.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:]
+                            if data_str == "[DONE]":
+                                continue
+                            try:
+                                data = json.loads(data_str)
+                                if "candidates" in data and len(data["candidates"]) > 0:
+                                    content = data["candidates"][0].get("content", {})
+                                    parts = content.get("parts", [])
+                                    if parts:
+                                        yield parts[0].get("text", "")
+                            except Exception as e:
+                                print(f"Error parsing SSE chunk: {e}")
+                    
+                    # Successfully streamed, break out of the retry loop
+                    return
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429 and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"Gemini API 429 HTTPStatusError - Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                raise
 
 
 async def async_stream_text(prompt: str, use_search: bool = False):

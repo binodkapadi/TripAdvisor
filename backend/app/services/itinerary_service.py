@@ -471,7 +471,6 @@ async def generate_plan(*, user_id: str, email: str, full_name: str, form: dict[
     )
 
     frontend_url = "https://tripwithbinod.netlify.app" if settings.is_production else settings.FRONTEND_URL
-    trip_link = f"{frontend_url}/itinerary/{itinerary_id}"
     body_html = get_itinerary_email_html(form['destination'], body)
 
     email_sent = False

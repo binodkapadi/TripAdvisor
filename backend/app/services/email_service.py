@@ -1,6 +1,8 @@
 import smtplib
 import asyncio
 import httpx
+import html as html_lib
+import re
 from email.message import EmailMessage
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -97,7 +99,7 @@ def get_verification_email_html(full_name: str, code: str) -> str:
                 <p>If you didn't create an account, please ignore this email.</p>
             </div>
             <div class="footer">
-                <p>&copy; {datetime.now().year} TripAdvisor. All rights reserved.</p>
+                <p>&copy; {datetime.now().year} TripAdvisor by Binod Kapadi. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -193,7 +195,7 @@ def get_password_reset_email_html(full_name: str, code: str) -> str:
                 <p>If you didn't request a password reset, please ignore this email.</p>
             </div>
             <div class="footer">
-                <p>&copy; {datetime.now().year} TripAdvisor. All rights reserved.</p>
+                <p>&copy; {datetime.now().year} TripAdvisor by Binod Kapadi. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -262,7 +264,7 @@ def get_welcome_email_html(full_name: str) -> str:
                 <p>We're excited to have you on board. Start planning your next adventure today!</p>
             </div>
             <div class="footer">
-                <p>&copy; {datetime.now().year} TripAdvisor. All rights reserved.</p>
+                <p>&copy; {datetime.now().year} TripAdvisor by Binod Kapadi. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -271,10 +273,24 @@ def get_welcome_email_html(full_name: str) -> str:
 
 import re
 
+def _sanitize_itinerary_content(body_text: str) -> str:
+    escaped = html_lib.escape(body_text)
+    normalized = escaped.replace("\r\n", "\n").replace("\r", "\n")
+    lines = normalized.split("\n")
+    safe_lines = []
+
+    for line in lines:
+        if re.match(r'^Day \d+:', line):
+            safe_lines.append(f"<strong>{line}</strong>")
+        else:
+            safe_lines.append(line)
+
+    return "<br>\n".join(safe_lines)
+
+
 def get_itinerary_email_html(destination: str, body_text: str) -> str:
-    # Make "Day X: ..." lines bold in the HTML output
-    formatted_body = re.sub(r'^(Day \d+:.*)$', r'<strong>\1</strong>', body_text, flags=re.MULTILINE)
-    
+    formatted_body = _sanitize_itinerary_content(body_text)
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -317,10 +333,10 @@ def get_itinerary_email_html(destination: str, body_text: str) -> str:
                 margin-bottom: 25px;
             }}
             .itinerary-text {{
-                white-space: pre-wrap;
                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                 font-size: 15px;
                 color: #444444;
+                line-height: 1.6;
             }}
             .footer {{
                 background-color: #f4f7f6;
@@ -329,6 +345,10 @@ def get_itinerary_email_html(destination: str, body_text: str) -> str:
                 color: #888888;
                 font-size: 12px;
                 border-top: 1px solid #eeeeee;
+            }}
+            a {{
+                color: #00aa6c;
+                text-decoration: none;
             }}
         </style>
     </head>
@@ -342,7 +362,7 @@ def get_itinerary_email_html(destination: str, body_text: str) -> str:
                 <div class="itinerary-text">{formatted_body}</div>
             </div>
             <div class="footer">
-                <p>&copy; {datetime.now().year} TripAdvisor. All rights reserved.</p>
+                <p>&copy; {datetime.now().year} TripAdvisor by Binod Kapadi. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -371,17 +391,36 @@ class EmailService:
             "sender": {"email": sender_email, "name": sender_name},
             "to": [{"email": to_email}],
             "subject": subject,
-            "textContent": body_text
+            "textContent": body_text,
+            "replyTo": {"email": sender_email, "name": sender_name}
         }
-        
+
         if body_html:
             payload["htmlContent"] = body_html
-            
-        async with httpx.AsyncClient() as client:
+            payload["headers"] = {"X-Mailin-custom": "itinerary-email"}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, headers=headers, json=payload)
+            response_text = response.text
+            print(f"Brevo API response status={response.status_code} to={to_email} sender={sender_email} payload_size={len(str(payload))} text_len={len(body_text)} html_len={len(body_html or '')}")
+            print(f"Brevo API raw response: {response_text}")
+
+            try:
+                response_json = response.json()
+            except ValueError:
+                response_json = None
+
             if response.status_code >= 400:
-                error_details = response.text
-                print(f"Brevo API Error ({response.status_code}): {error_details}")
+                error_details = response_json or response_text
+                raise RuntimeError(f"Brevo API Error ({response.status_code}): {error_details}")
+
+            if response_json and isinstance(response_json, dict):
+                message_id = response_json.get("messageId") or response_json.get("message_id")
+                if message_id:
+                    print(f"Brevo accepted email. messageId={message_id}")
+                else:
+                    print("Brevo accepted email but returned no messageId; inspect Brevo dashboard for delivery events.")
+
             response.raise_for_status()
 
     async def _send_smtp(self, to_email: str, subject: str, body_text: str, body_html: str = None) -> None:
