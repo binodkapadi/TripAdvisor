@@ -44,7 +44,7 @@ Verify installation [Open Command Prompt in Windows]:
 
 ## Step 2: Setup Folder Structure
 
-Open VS Code and create a new folder:
+Open VS Code Terminal and create a new folder:
 
     mkdir TripAdvisor
     cd TripAdvisor
@@ -107,7 +107,7 @@ First put all required dependencies inside requirements.txt file and then run:
     # SENDER_EMAIL=your_email@gmail.com
     # SENDER_NAME = TripAdvisor
 
-# B) Frontend Setup (React + Vite) [Open New Terminal]
+### B) Frontend Setup (React + Vite) [Open New Terminal]
 
     mkdir frontend
     cd frontend
@@ -133,10 +133,22 @@ Install dependencies:
     # VITE_API_URL=Your_Production_URL (Production URL if you want run locally leave as it is it will not effect your code.)
 
 
-# In Routes.py File [Make changes Accordingly] [All other code same only this part]
+### Inside Backend->app->api Folder[routes.py] [if you are running local host]then
+Remove the portion of code from this file routes.py[line 33-42]
 
-    router = APIRouter()
+    def get_base_url() -> str:
+        if settings.is_production:
+            return "https://tripadvisor-binodkapadi.onrender.com"
+        return settings.BASE_URL
 
+
+    def get_frontend_url() -> str:
+        if settings.is_production:
+            return "https://tripwithbinod.netlify.app"
+        return settings.FRONTEND_URL
+
+### Inside Backend->app->api Folder[routes.py] [if you are running In production level or hosting]then
+Replace the portion of code from this file routes.py[line 33-42]
 
     def get_base_url() -> str:
         if settings.is_production:
@@ -148,14 +160,6 @@ Install dependencies:
         if settings.is_production:
             return "Your_Frontend_Production_URL"
         return settings.FRONTEND_URL
-
-# In Config.py File [Make changes Accordingly] [If your local host is diiifent use that otherwise Same As it is.]
-
-
-    # Base URL for OAuth redirects
-    
-    BASE_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5173"
 
 # RUN PROJECT LOCALLY
 
