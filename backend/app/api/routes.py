@@ -30,7 +30,6 @@ from ..core.rate_limiter import limiter
 
 router = APIRouter()
 
-
 def get_base_url() -> str:
     if settings.is_production:
         return "https://tripadvisor-binodkapadi.onrender.com"
@@ -41,7 +40,6 @@ def get_frontend_url() -> str:
     if settings.is_production:
         return "https://tripwithbinod.netlify.app"
     return settings.FRONTEND_URL
-
 
 @router.get("/")
 async def root() -> dict[str, str]:

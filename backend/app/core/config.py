@@ -30,10 +30,10 @@ class Settings(BaseSettings):
     # Gemini
     GEMINI_API_KEY: str | None = None
     GEMINI_MODELS: str = (
-        "gemini-flash-latest,"
-        "gemini-2.5-flash-lite-preview-09-2025,"
         "gemini-flash-lite-latest,"
+        "gemini-flash-latest,"
         "gemini-2.5-flash,"
+        "gemini-2.5-flash-lite-preview-09-2025,"
         "gemini-2.5-flash-preview-09-2025,"
         "gemini-2.0-flash,"
         "gemini-2.0-flash-lite,"
