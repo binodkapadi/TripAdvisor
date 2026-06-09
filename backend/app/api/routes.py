@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from typing import Any
+import urllib.parse
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from ..core.config import settings
@@ -36,10 +37,23 @@ def get_base_url() -> str:
     return settings.BASE_URL
 
 
-def get_frontend_url() -> str:
-    if settings.is_production:
-        return "https://tripwithbinod.netlify.app"
-    return settings.FRONTEND_URL
+def get_default_frontend_url() -> str:
+    return "https://tripwithbinod.vercel.app"
+
+
+def get_frontend_url_from_state(state: str | None) -> str:
+    default_url = get_default_frontend_url()
+    if not state:
+        return default_url
+    try:
+        decoded_state = urllib.parse.unquote(state)
+        valid_origins = [url.strip().rstrip("/") for url in settings.FRONTEND_URLS.split(",") if url.strip()] + ["http://localhost:5173", "http://127.0.0.1:5173"]
+        if decoded_state in valid_origins:
+            return decoded_state
+    except Exception:
+        pass
+    return default_url
+
 
 @router.get("/")
 async def root() -> dict[str, str]:
@@ -216,7 +230,7 @@ async def debug_get_codes(email: str) -> dict[str, Any]:
 
 @router.post("/api/auth/verify-code")
 @limiter.limit("20/minute")
-async def auth_verify_code(req: VerifyCodeRequest, request: Request) -> dict[str, Any]:
+async def auth_verify_code(req: VerifyCodeRequest, request: Request, response: Response) -> dict[str, Any]:
     if req.purpose not in ("signup", "forgot_password"):
         raise HTTPException(status_code=400, detail="Invalid purpose")
 
@@ -239,6 +253,16 @@ async def auth_verify_code(req: VerifyCodeRequest, request: Request) -> dict[str
             raise HTTPException(status_code=400, detail=str(exc))
 
         access_token = jwt_auth.create_access_token({"sub": user_id, "email": req.email, "fullName": req.fullName})
+        
+        response.set_cookie(
+            key="accessToken",
+            value=access_token,
+            httponly=True,
+            secure=settings.is_production,
+            samesite="none" if settings.is_production else "lax",
+            max_age=3600 * 24 * 7
+        )
+        
         return {"accessToken": access_token}
 
     # forgot password
@@ -255,7 +279,7 @@ async def auth_verify_code(req: VerifyCodeRequest, request: Request) -> dict[str
 
 @router.post("/api/auth/login")
 @limiter.limit("20/minute")
-async def auth_login(req: LoginRequest, request: Request) -> dict[str, str]:
+async def auth_login(req: LoginRequest, request: Request, response: Response) -> dict[str, str]:
     _validate_email_domain(req.email)
     user = await get_user_by_email(req.email)
     if not user:
@@ -269,23 +293,33 @@ async def auth_login(req: LoginRequest, request: Request) -> dict[str, str]:
         "email": user["email"],
         "fullName": user.get("fullName", "")
     })
-    print(f"Access token created: {access_token}")
+    
+    response.set_cookie(
+        key="accessToken",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="none" if settings.is_production else "lax",
+        max_age=3600 * 24 * 7
+    )
+    
     return {"accessToken": access_token}
 
 
 @router.get("/api/auth/google")
-async def auth_google_login():
+async def auth_google_login(state: str | None = None):
     base_url = get_base_url()
+    encoded_state = urllib.parse.quote(state) if state else ""
     redirect_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
         f"&redirect_uri={base_url}/api/auth/google/callback"
-        f"&scope=openid%20email%20profile&response_type=code"
+        f"&scope=openid%20email%20profile&response_type=code&state={encoded_state}"
     )
     return RedirectResponse(url=redirect_url)
 
 
 @router.get("/api/auth/google/callback")
-async def auth_google_callback(code: str | None = None, error: str | None = None):
+async def auth_google_callback(code: str | None = None, error: str | None = None, state: str | None = None):
     if error:
         raise HTTPException(status_code=400, detail={"provider": "google", "error": error})
     if not code:
@@ -327,22 +361,32 @@ async def auth_google_callback(code: str | None = None, error: str | None = None
         "email": user["email"], 
         "fullName": user.get("fullName") or user_info.get("name", "")
     })
-    frontend_url = get_frontend_url()
-    return RedirectResponse(f"{frontend_url}/auth/google/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url_from_state(state)
+    response = RedirectResponse(f"{frontend_url}/auth/success?token={access_token}")
+    response.set_cookie(
+        key="accessToken",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="none" if settings.is_production else "lax",
+        max_age=3600 * 24 * 7
+    )
+    return response
 
 
 @router.get("/api/auth/github")
-async def auth_github_login():
+async def auth_github_login(state: str | None = None):
     base_url = get_base_url()
+    encoded_state = urllib.parse.quote(state) if state else ""
     redirect_url = (
         f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}"
-        f"&redirect_uri={base_url}/api/auth/github/callback&scope=user:email"
+        f"&redirect_uri={base_url}/api/auth/github/callback&scope=user:email&state={encoded_state}"
     )
     return RedirectResponse(url=redirect_url)
 
 
 @router.get("/api/auth/github/callback")
-async def auth_github_callback(code: str | None = None, error: str | None = None):
+async def auth_github_callback(code: str | None = None, error: str | None = None, state: str | None = None):
     if error:
         raise HTTPException(status_code=400, detail={"provider": "github", "error": error})
     if not code:
@@ -385,25 +429,36 @@ async def auth_github_callback(code: str | None = None, error: str | None = None
         "email": user["email"], 
         "fullName": user.get("fullName") or user_info.get("name") or user_info.get("login", "")
     })
-    frontend_url = get_frontend_url()
-    return RedirectResponse(f"{frontend_url}/auth/github/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url_from_state(state)
+    response = RedirectResponse(f"{frontend_url}/auth/success?token={access_token}")
+    response.set_cookie(
+        key="accessToken",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="none" if settings.is_production else "lax",
+        max_age=3600 * 24 * 7
+    )
+    return response
 
 
 @router.get("/api/auth/linkedin")
-async def auth_linkedin_login():
+async def auth_linkedin_login(state: str | None = None):
     base_url = get_base_url()
+    encoded_state = urllib.parse.quote(state) if state else ""
     redirect_url = (
         f"https://www.linkedin.com/oauth/v2/authorization"
         f"?response_type=code"
         f"&client_id={settings.LINKEDIN_CLIENT_ID}"
         f"&redirect_uri={base_url}/api/auth/linkedin/callback"
         f"&scope=openid%20profile%20email"
+        f"&state={encoded_state}"
     )
     return RedirectResponse(url=redirect_url)
 
 
 @router.get("/api/auth/linkedin/callback")
-async def auth_linkedin_callback(code: str | None = None, error: str | None = None):
+async def auth_linkedin_callback(code: str | None = None, error: str | None = None, state: str | None = None):
     if error:
         raise HTTPException(status_code=400, detail={"provider": "linkedin", "error": error})
     if not code:
@@ -448,8 +503,17 @@ async def auth_linkedin_callback(code: str | None = None, error: str | None = No
         "email": user["email"], 
         "fullName": user.get("fullName") or name
     })
-    frontend_url = get_frontend_url()
-    return RedirectResponse(f"{frontend_url}/auth/linkedin/callback?accessToken={access_token}")
+    frontend_url = get_frontend_url_from_state(state)
+    response = RedirectResponse(f"{frontend_url}/auth/success?token={access_token}")
+    response.set_cookie(
+        key="accessToken",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="none" if settings.is_production else "lax",
+        max_age=3600 * 24 * 7
+    )
+    return response
 
 
 @router.get("/api/user/trips/latest")
@@ -568,20 +632,13 @@ async def upload_profile_photo(
 async def ai_generate_plan(
     req: GeneratePlanRequest,
     request: Request,
+    claims: dict[str, Any] = Depends(get_current_user),
 ) -> Any:
-    # Use actual user ID if authenticated, else anonymous
-    user_id = "anonymous_user"
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        try:
-            claims = await get_current_user(authorization=auth_header)
-            extracted_id = _extract_user_id(claims)
-            if extracted_id:
-                user_id = extracted_id
-        except Exception:
-            pass
+    user_id = _extract_user_id(claims)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user token")
 
-    user_email = req.email or "anonymous@example.com"
+    user_email = req.email or claims.get("email")
     if not user_email:
         raise HTTPException(status_code=400, detail="Email is required")
 
@@ -613,18 +670,11 @@ async def ai_generate_plan(
 async def ai_chat(
     req: ChatRequest,
     request: Request,
+    claims: dict[str, Any] = Depends(get_current_user),
 ) -> Any:
-    # Use actual user ID if authenticated, else anonymous
-    user_id = "anonymous_user"
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        try:
-            claims = await get_current_user(authorization=auth_header)
-            extracted_id = _extract_user_id(claims)
-            if extracted_id:
-                user_id = extracted_id
-        except Exception:
-            pass
+    user_id = _extract_user_id(claims)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user token")
 
     print(f"Chat request received: user_id={user_id}, itinerary_id={req.itineraryId}, question={req.question}")
     
@@ -678,18 +728,11 @@ async def get_chat_history(
 async def ai_chat_stream(
     req: ChatRequest,
     request: Request,
+    claims: dict[str, Any] = Depends(get_current_user),
 ) -> Any:
-    # Use actual user ID if authenticated, else anonymous
-    user_id = "anonymous_user"
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        try:
-            claims = await get_current_user(authorization=auth_header)
-            extracted_id = _extract_user_id(claims)
-            if extracted_id:
-                user_id = extracted_id
-        except Exception:
-            pass
+    user_id = _extract_user_id(claims)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user token")
 
     print(f"Chat stream request received: user_id={user_id}, itinerary_id={req.itineraryId}, question={req.question}")
     
@@ -742,14 +785,12 @@ async def share_video(payload: ShareVideoRequest, request: Request) -> dict[str,
         raise HTTPException(status_code=400, detail="Invalid or unsupported social media URL")
 
     user_id = None
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
+    try:
         # Best-effort: store user if token is valid, but don't hard-fail sharing.
-        try:
-            claims = await get_current_user(authorization=auth_header)
-            user_id = _extract_user_id(claims)
-        except Exception:
-            user_id = None
+        claims = await get_current_user(request)
+        user_id = _extract_user_id(claims)
+    except Exception:
+        user_id = None
 
     await mongo.connect()
     await mongo.collection("shared_videos").insert_one(

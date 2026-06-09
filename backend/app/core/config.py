@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # Base URL for OAuth redirects
     BASE_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URLS: str = "http://localhost:5173"
 
     # Brevo
     BREVO_API_KEY: str | None = None
@@ -29,16 +29,14 @@ class Settings(BaseSettings):
 
     # Gemini
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODELS: str = (
-        "gemini-2.5-flash,"
-        "gemini-2.0-flash-lite,"
-        "gemini-flash-latest,"
-        "gemini-flash-lite-latest,"
-        "gemini-2.0-flash,"
-        "gemini-2.5-flash-lite,"
-        "gemini-2.5-flash-lite-preview-09-2025,"
-        "gemini-2.5-flash-preview-09-2025"
-    )
+    GEMINI_MODELS: list[str] = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash-lite"
+    ]
 
     # Email (SMTP)
     SMTP_HOST: str | None = None

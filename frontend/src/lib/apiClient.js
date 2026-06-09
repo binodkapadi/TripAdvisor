@@ -6,6 +6,7 @@ export function createApiClient({ token } = {}) {
   const instance = axios.create({
     baseURL: apiBaseUrl,
     timeout: 120000,
+    withCredentials: true,
   })
 
   instance.interceptors.request.use((config) => {

@@ -19,9 +19,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/plan" element={<PlanPage />} />
                 <Route path="/signup" element={<SignupPage />} />
-                <Route path="/auth/google/callback" element={<OAuthCallback />} />
-                <Route path="/auth/github/callback" element={<OAuthCallback />} />
-                <Route path="/auth/linkedin/callback" element={<OAuthCallback />} />
+                <Route path="/auth/success" element={<OAuthCallback />} />
               </Routes>
             </AppShell>
           </BrowserRouter>

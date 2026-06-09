@@ -29,9 +29,12 @@ app = FastAPI(title="TripAdvisor Backend", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
+frontend_urls = [url.strip().rstrip("/") for url in settings.FRONTEND_URLS.split(",") if url.strip()]
+origins = list(set(frontend_urls + ["http://localhost:5173", "http://127.0.0.1:5173"]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -11,7 +11,10 @@ from ..core.config import settings
 
 
 def _models() -> list[str]:
-    models = [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
+    if isinstance(settings.GEMINI_MODELS, list):
+        models = [m.strip() for m in settings.GEMINI_MODELS if m.strip()]
+    else:
+        models = [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
     if not models:
         models = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash", "gemini-2.5-flash-lite"]
     return models

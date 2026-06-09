@@ -88,6 +88,7 @@ export default function ChatAssistant({ itineraryId }) {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
       const response = await fetch(`${baseUrl}/api/ai/chat/stream`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

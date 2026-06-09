@@ -8,7 +8,7 @@ export default function OAuthCallback() {
   const { signInWithCustomToken } = useAuth()
 
   useEffect(() => {
-    const token = searchParams.get('accessToken')
+    const token = searchParams.get('token') || searchParams.get('accessToken')
     const error = searchParams.get('error')
 
     if (error) {
