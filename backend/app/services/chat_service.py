@@ -131,7 +131,12 @@ Current User Question:
 async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None) -> str:
     prompt = await _build_rag_prompt(user_id, itinerary_id, question, history)
     
-    print(f"Sending prompt to Gemini ({len(prompt)} characters) with web search enabled")
+    from .serpapi_client import search_web
+    search_results = await search_web(question)
+    if search_results:
+        prompt += f"\n\n[LIVE WEB SEARCH RESULTS FOR '{question}']\n{search_results}\n"
+    
+    print(f"Sending prompt to Gemini ({len(prompt)} characters) with manual web search")
     
     try:
         from .gemini_client import generate_text
@@ -166,6 +171,11 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
 
 async def prepare_rag_stream(*, user_id: str, itinerary_id: str, question: str, history: list[dict[str, Any]] | None = None):
     prompt = await _build_rag_prompt(user_id, itinerary_id, question, history)
+    
+    from .serpapi_client import search_web
+    search_results = await search_web(question)
+    if search_results and "unavailable" not in search_results:
+        prompt += f"\n\n[LIVE WEB SEARCH RESULTS FOR '{question}']\n{search_results}\n"
     
     from .gemini_client import async_stream_text
     

@@ -29,14 +29,10 @@ class Settings(BaseSettings):
 
     # Gemini
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODELS: list[str] = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-flash-latest",
-        "gemini-flash-lite-latest",
-        "gemini-2.0-flash",
-        "gemini-2.5-flash-lite"
-    ]
+    
+    # Web Search Providers
+    TAVILY_API_KEY: str | None = None
+    SERPER_API_KEY: str | None = None
 
     # Email (SMTP)
     SMTP_HOST: str | None = None

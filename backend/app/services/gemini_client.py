@@ -9,19 +9,34 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..core.config import settings
 
+GENERATION_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+]
 
-def _models() -> list[str]:
-    if isinstance(settings.GEMINI_MODELS, list):
-        models = [m.strip() for m in settings.GEMINI_MODELS if m.strip()]
-    else:
-        models = [m.strip() for m in (settings.GEMINI_MODELS or "").split(",") if m.strip()]
-    if not models:
-        models = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash", "gemini-2.5-flash-lite"]
-    return models
+LIVE_SEARCH_SYNTHESIS_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+]
+
+FALLBACK_MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
+]
+
+def _get_models(use_search: bool = False) -> list[str]:
+    models = LIVE_SEARCH_SYNTHESIS_MODELS if use_search else GENERATION_MODELS
+    # Avoid duplicates if a model is in both lists
+    final_models = []
+    for m in models + FALLBACK_MODELS:
+        if m not in final_models:
+            final_models.append(m)
+    return final_models
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    # Strip code fences if the model returns ```json ... ```
     stripped = text.strip()
     stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
     stripped = re.sub(r"\s*```$", "", stripped)
@@ -29,7 +44,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 @retry(wait=wait_exponential(min=2, max=20), stop=stop_after_attempt(3))
-async def _generate_once(model: str, prompt: str, use_search: bool = False) -> str:
+async def _generate_once(model: str, prompt: str) -> str:
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is missing in environment")
 
@@ -45,28 +60,23 @@ async def _generate_once(model: str, prompt: str, use_search: bool = False) -> s
         },
     }
 
-    if use_search:
-        payload["tools"] = [{"googleSearch": {}}]
-
     async with httpx.AsyncClient(timeout=180.0) as client:
         r = await client.post(url, params=params, json=payload)
         r.raise_for_status()
         data = r.json()
 
-    # Expected response shape:
-    # data.candidates[0].content.parts[0].text
     return data["candidates"][0]["content"]["parts"][0]["text"]
 
 
 async def generate_json(prompt: str) -> dict[str, Any]:
     last_err: Exception | None = None
-    for model in _models():
+    for model in _get_models(use_search=False):
         try:
             text = await _generate_once(model, prompt)
             return _extract_json(text)
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
+                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
             last_err = e
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
@@ -74,31 +84,21 @@ async def generate_json(prompt: str) -> dict[str, Any]:
 
 async def generate_text(prompt: str, use_search: bool = False) -> str:
     last_err: Exception | None = None
-    for model in _models():
+    for model in _get_models(use_search=use_search):
         try:
-            text = await _generate_once(model, prompt, use_search=use_search)
+            text = await _generate_once(model, prompt)
             if not text:
                 raise RuntimeError(f"Model {model} yielded no content.")
             return str(text).strip()
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
-            
+                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
             last_err = e
-            if use_search:
-                try:
-                    text = await _generate_once(model, prompt, use_search=False)
-                    if text:
-                        return str(text).strip()
-                except Exception as e2:
-                    if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code == 429:
-                        raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e2
-                    last_err = e2
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
 
 
-async def _stream_generate_once(model: str, prompt: str, use_search: bool = False):
+async def _stream_generate_once(model: str, prompt: str):
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is missing in environment")
 
@@ -113,9 +113,6 @@ async def _stream_generate_once(model: str, prompt: str, use_search: bool = Fals
             "maxOutputTokens": 2048,
         },
     }
-
-    if use_search:
-        payload["tools"] = [{"googleSearch": {}}]
 
     import asyncio
     max_retries = 3
@@ -150,7 +147,6 @@ async def _stream_generate_once(model: str, prompt: str, use_search: bool = Fals
                             except Exception as e:
                                 print(f"Error parsing SSE chunk: {e}")
                     
-                    # Successfully streamed, break out of the retry loop
                     return
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429 and attempt < max_retries - 1:
@@ -163,10 +159,10 @@ async def _stream_generate_once(model: str, prompt: str, use_search: bool = Fals
 
 async def async_stream_text(prompt: str, use_search: bool = False):
     last_err: Exception | None = None
-    for model in _models():
+    for model in _get_models(use_search=use_search):
         try:
             yielded_any = False
-            async for chunk in _stream_generate_once(model, prompt, use_search=use_search):
+            async for chunk in _stream_generate_once(model, prompt):
                 yielded_any = True
                 yield chunk
             if not yielded_any:
@@ -174,21 +170,8 @@ async def async_stream_text(prompt: str, use_search: bool = False):
             return
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
-            
+                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
+            print(f"Model {model} failed: {str(e)}")
             last_err = e
-            if use_search:
-                try:
-                    yielded_any = False
-                    async for chunk in _stream_generate_once(model, prompt, use_search=False):
-                        yielded_any = True
-                        yield chunk
-                    if not yielded_any:
-                        raise RuntimeError(f"Model {model} yielded no content with use_search=False.")
-                    return
-                except Exception as e2:
-                    if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code == 429:
-                        raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e2
-                    last_err = e2
             continue
     raise last_err or RuntimeError("Gemini streaming failed for all models")
