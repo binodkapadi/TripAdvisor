@@ -65,6 +65,8 @@ async def generate_json(prompt: str) -> dict[str, Any]:
             text = await _generate_once(model, prompt)
             return _extract_json(text)
         except Exception as e:
+            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
+                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
             last_err = e
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
@@ -79,6 +81,9 @@ async def generate_text(prompt: str, use_search: bool = False) -> str:
                 raise RuntimeError(f"Model {model} yielded no content.")
             return str(text).strip()
         except Exception as e:
+            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
+                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
+            
             last_err = e
             if use_search:
                 try:
@@ -86,6 +91,8 @@ async def generate_text(prompt: str, use_search: bool = False) -> str:
                     if text:
                         return str(text).strip()
                 except Exception as e2:
+                    if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code == 429:
+                        raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e2
                     last_err = e2
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
@@ -166,6 +173,9 @@ async def async_stream_text(prompt: str, use_search: bool = False):
                 raise RuntimeError(f"Model {model} yielded no content.")
             return
         except Exception as e:
+            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
+                raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e
+            
             last_err = e
             if use_search:
                 try:
@@ -177,6 +187,8 @@ async def async_stream_text(prompt: str, use_search: bool = False):
                         raise RuntimeError(f"Model {model} yielded no content with use_search=False.")
                     return
                 except Exception as e2:
+                    if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code == 429:
+                        raise RuntimeError("Gemini API Rate Limit Exceeded (429). Please wait a minute and try again.") from e2
                     last_err = e2
             continue
     raise last_err or RuntimeError("Gemini streaming failed for all models")
