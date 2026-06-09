@@ -1,11 +1,13 @@
 # OVERVIEW
 
-TripAdvisor AI is a full-stack AI-powered travel planning web application that helps users generate smart travel itineraries, explore destinations, discover attractions, check weather updates, and interact with an AI travel assistant. The application combines AI-powered itinerary generation, FastAPI + Python backend services, and a modern React + Vite frontend — deployed using Netlify (Frontend) and Render (Backend).
+TripAdvisor AI is a full-stack AI-powered travel planning web application that helps users generate smart travel itineraries, explore destinations, discover attractions, check weather updates, and interact with an AI travel assistant. The application combines AI-powered itinerary generation, FastAPI + Python backend services, and a modern React + Vite frontend — deployed using Netlify or Vercel (Frontend) and Render (Backend).
 
 
 # DEPLOYMENT LINK
 
 Frontend Deployment (Netlify): https://tripwithbinod.netlify.app
+
+Frontend Deployment (Vercel): https://tripwithbinod.vercel.app
 
 Backend Deployment (Render): https://tripadvisor-binodkapadi.onrender.com
 
@@ -133,35 +135,7 @@ Install dependencies:
     # VITE_API_URL=Your_Production_URL (Production URL if you want run locally leave as it is it will not effect your code.)
 
 
-### Inside Backend->app->api Folder[routes.py] [if you are running local host]then
-Remove the portion of code from this file routes.py[line 33-42]
-
-    def get_base_url() -> str:
-        if settings.is_production:
-            return "https://tripadvisor-binodkapadi.onrender.com"
-        return settings.BASE_URL
-
-
-    def get_frontend_url() -> str:
-        if settings.is_production:
-            return "https://tripwithbinod.netlify.app"
-        return settings.FRONTEND_URL
-
-### Inside Backend->app->api Folder[routes.py] [if you are running In production level or hosting]then
-Replace the portion of code from this file routes.py[line 33-42]
-
-    def get_base_url() -> str:
-        if settings.is_production:
-            return "Your_Backend_Production_Url"
-        return settings.BASE_URL
-
-
-    def get_frontend_url() -> str:
-        if settings.is_production:
-            return "Your_Frontend_Production_URL"
-        return settings.FRONTEND_URL
-
-# RUN PROJECT LOCALLY
+## Step 3: RUN PROJECT LOCALLY
 
 Run Backend and Frontend in separate terminals.
 
@@ -179,6 +153,23 @@ Frontend
 
     cd frontend
     npm run dev
+
+# Leave  [Step 4] if you are running project in Local Host only.
+
+## Step 4: MUST NEED TO DO [fOR PRODUCTION LEVEL OR HOSTING]
+
+### Inside Backend->app->api Folder[routes.py] [if you are running In production level or hosting]then
+Replace the portion of code from this file routes.py[line 34-41]
+
+    def get_base_url() -> str:
+        if settings.is_production:
+            return "Your_Backend_Production_Url"
+        return settings.BASE_URL
+
+
+    def get_default_frontend_url() -> str:
+        return "Your_Frontend_Production_URL"
+
 
 # FEATURES
 
