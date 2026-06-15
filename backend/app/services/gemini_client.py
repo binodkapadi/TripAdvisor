@@ -10,9 +10,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from ..core.config import settings
 
 GENERATION_MODELS = [
+    "gemini-2.5-flash",
     "gemini-flash-lite-latest",
     "gemini-flash-latest",
-    "gemini-2.5-flash",
     "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
     "gemini-2.5-flash-lite",
@@ -20,14 +20,15 @@ GENERATION_MODELS = [
 ]
 
 LIVE_SEARCH_SYNTHESIS_MODELS = [
-    "gemini-flash-lite-latest",
     "gemini-2.5-flash",
+    "gemini-flash-lite-latest",
     "gemini-flash-latest",
     "gemini-3.5-flash",
     "gemini-2.0-flash",
 ]
 
 FALLBACK_MODELS = [
+    "gemini-2.5-flash",
     "gemini-flash-lite-latest",
     "gemini-flash-latest",
     "gemini-2.0-flash-lite",
@@ -52,6 +53,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 @retry(wait=wait_exponential(min=2, max=20), stop=stop_after_attempt(3))
 async def _generate_once(model: str, prompt: str) -> str:
+    print(f"[GEMINI API] Generating with model: {model} | Prompt length: {len(prompt)}")
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is missing in environment")
 
@@ -82,8 +84,14 @@ async def generate_json(prompt: str) -> dict[str, Any]:
             text = await _generate_once(model, prompt)
             return _extract_json(text)
         except Exception as e:
-            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
+            print(f"[GEMINI API] Model {model} failed: {type(e).__name__} - {str(e)}")
+            if isinstance(e, httpx.HTTPStatusError):
+                try:
+                    print(f"[GEMINI API] Response body: {e.response.text}")
+                except:
+                    pass
+                if e.response.status_code == 429:
+                    print(f"[GEMINI API] Rate limit (429) hit for {model}. Falling back to next model...")
             last_err = e
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
@@ -98,14 +106,21 @@ async def generate_text(prompt: str, use_search: bool = False) -> str:
                 raise RuntimeError(f"Model {model} yielded no content.")
             return str(text).strip()
         except Exception as e:
-            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
+            print(f"[GEMINI API] Model {model} failed: {type(e).__name__} - {str(e)}")
+            if isinstance(e, httpx.HTTPStatusError):
+                try:
+                    print(f"[GEMINI API] Response body: {e.response.text}")
+                except:
+                    pass
+                if e.response.status_code == 429:
+                    print(f"[GEMINI API] Rate limit (429) hit for {model}. Falling back to next model...")
             last_err = e
             continue
     raise last_err or RuntimeError("Gemini generation failed for all models")
 
 
 async def _stream_generate_once(model: str, prompt: str):
+    print(f"[GEMINI STREAM] Generating with model: {model} | Prompt length: {len(prompt)}")
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is missing in environment")
 
@@ -176,9 +191,10 @@ async def async_stream_text(prompt: str, use_search: bool = False):
                 raise RuntimeError(f"Model {model} yielded no content.")
             return
         except Exception as e:
-            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
-                raise RuntimeError(f"Your API limit exceeded for this model: {model}") from e
-            print(f"Model {model} failed: {str(e)}")
+            print(f"[GEMINI STREAM] Model {model} failed: {type(e).__name__} - {str(e)}")
+            if isinstance(e, httpx.HTTPStatusError):
+                if e.response.status_code == 429:
+                    print(f"[GEMINI STREAM] Rate limit (429) hit for {model}. Falling back to next model...")
             last_err = e
             continue
     raise last_err or RuntimeError("Gemini streaming failed for all models")

@@ -159,3 +159,106 @@ async def search_hotels(destination: str, check_in: str, check_out: str, adults:
     except Exception as e:
         print(f"SerpAPI Hotels error: {e}")
         return f"Could not fetch live hotel data for {destination} due to an error."
+
+
+async def _get_airport_id(query: str) -> str | None:
+    if not settings.SERPAPI_KEY:
+        return None
+        
+    url = "https://serpapi.com/search.json"
+    params = {
+        "engine": "google_flights_autocomplete",
+        "q": query,
+        "hl": "en",
+        "api_key": settings.SERPAPI_KEY,
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            data = r.json()
+            
+            suggestions = data.get("suggestions", [])
+            for sug in suggestions:
+                # Look for airports
+                airports = sug.get("airports", [])
+                if airports:
+                    return airports[0].get("id")
+                # Or just return the general ID (e.g., city ID like /m/04cx5)
+                if sug.get("id"):
+                    return sug.get("id")
+                    
+    except Exception as e:
+        print(f"SerpAPI Google Flights Autocomplete error for {query}: {e}")
+        
+    return None
+
+
+async def search_flights(origin: str, destination: str, date: str) -> str:
+    if not settings.SERPAPI_KEY:
+        return "SerpAPI key not configured for flights. Please use fallback web search."
+
+    departure_id = await _get_airport_id(origin)
+    arrival_id = await _get_airport_id(destination)
+    
+    if not departure_id or not arrival_id:
+        return "Could not resolve origin or destination to airport codes. Please use fallback web search."
+
+    url = "https://serpapi.com/search.json"
+    params = {
+        "engine": "google_flights",
+        "departure_id": departure_id,
+        "arrival_id": arrival_id,
+        "outbound_date": date,
+        "currency": "USD",
+        "hl": "en",
+        "api_key": settings.SERPAPI_KEY,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            data = r.json()
+
+        best_flights = data.get("best_flights", [])
+        if not best_flights:
+            other_flights = data.get("other_flights", [])
+            if other_flights:
+                best_flights = other_flights
+                
+        if not best_flights:
+            return f"No flights found from {origin} to {destination} on {date}."
+
+        prices = []
+        airlines = set()
+        
+        for flight in best_flights[:5]:
+            price = flight.get("price")
+            if price is not None:
+                prices.append(price)
+            
+            for f in flight.get("flights", []):
+                airline = f.get("airline")
+                if airline:
+                    airlines.add(airline)
+                    
+        if not prices:
+            return "Flight prices not available."
+
+        min_price = min(prices)
+        avg_price = sum(prices) / len(prices)
+        airline_str = ", ".join(list(airlines)[:3])
+
+        return (
+            f"LIVE GOOGLE FLIGHTS DATA:\n"
+            f"- Major Airlines Operating: {airline_str}\n"
+            f"- Exact Lowest One-Way Economy Price found: ${min_price}\n"
+            f"- Average One-Way Economy Price found: ${avg_price:.0f}\n"
+            f"(Use the Exact Lowest Price for cost calculations if applicable)"
+        )
+
+    except Exception as e:
+        print(f"SerpAPI Google Flights error: {e}")
+        return "Error fetching flights data."

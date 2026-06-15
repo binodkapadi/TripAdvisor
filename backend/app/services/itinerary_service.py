@@ -13,7 +13,7 @@ from ..core.config import settings
 from .gemini_client import generate_json
 from .openweather_client import get_weather_insights
 from .email_service import send_email, get_itinerary_email_html
-from .serpapi_client import search_hotels, search_web
+from .serpapi_client import search_hotels, search_web, search_flights
 import asyncio
 
 
@@ -112,7 +112,7 @@ STRICT GENERATION RULES:
 - Keep this section SHORT and SWEET. Use concise sentences (Must Implemented).
 
 2. TRANSPORT DETAILS:
-- Keep this section extremely SHORT and SWEET. Use concise bullet points.
+- Keep this section extremely SHORT and SWEET. Use concise bullet points(must).
 - Generate REALISTIC transportation insights for {form['transportMode']} from {form['origin']} to {form['destination']}.
 - Include:
   - Whether this transport mode is available for this route.
@@ -179,56 +179,62 @@ CRITICAL: Provide realistic nightly prices for the destination (not inflated/red
 4. COST PREDICTOR:
 Generate a detailed cost breakdown for {form['numberOfPeople']} person(s) for {num_days} days.
 CRITICAL INSTRUCTIONS:
-- You MUST use the LIVE COST ESTIMATES, LIVE HOTELS DATA, and LIVE TRANSPORT DATA provided above to calculate accurate pricing.
-- Do NOT generate dummy values. Use deterministic calculation formulas. Round all outputs to nearest whole number.
-- All pricing must be accurate, stable, production-level, mathematically consistent, visually clear, and synchronized across transportation and cost predictor sections.
-- If live cost estimates are vague, extract the daily average. If no live data is useful, fallback to: Meals ($15), Local Transport ($8), Activities ($25) adjusted by destination category.
+- You MUST follow the exact formulas below.
+- Do NOT generate arbitrary or dummy values.
+- Calculate subtotal first, then calculate miscellaneous, then calculate final total.
 
 ACCOMMODATION CALCULATION:
-- Use the average hotel price from the generated hotels section × {num_days} nights.
+- Use the hotel pricing data retrieved from SerpAPI (if available in live data).
+- Calculate average nightly rate × {num_days} nights.
 - Account for room sharing: Roughly 1 room per 2 people (adjust if needed).
-- Provide TOTAL accommodation cost for entire group and stay duration.
-- Example format: "Accommodation ({num_days} nights): $X (averaging $Y per night)"
+- If no pricing exists, return an estimated range and clearly label it as "Estimated". Do not fabricate luxury/premium prices.
 
 MEALS & FOOD CALCULATION:
-- Accurately calculate based on {form['numberOfPeople']} people and preferences: {form.get('preferences', 'standard dining')}.
-- Total formula: per-person-per-day rate × {num_days} days × {form['numberOfPeople']} people.
-- Include: breakfast, lunch, dinner, snacks, beverages
-- Example format: "Meals & Food ({num_days} days, {form['numberOfPeople']} people): $X"
+- Use destination-based daily estimates.
+- Budget tier: $8-15 per traveler per day.
+- Mid-range tier: $15-35 per traveler per day.
+- Premium tier: $35-60 per traveler per day.
+- Choose tier based on overall budget: ${form['budget']}.
+- Formula: daily_food_cost × {form['numberOfPeople']} travelers × {num_days} days.
 
 LOCAL TRANSPORT CALCULATION:
-- Daily rate for taxis/rideshare/ppublic transport.
-- Accurately calculate based on {form['numberOfPeople']} people.
-- Total formula: per-day rate × {num_days} days × {form['numberOfPeople']} people.
-- Include: airport transfers, daily sightseeing transport.
-- Example format: "Local Transport ({num_days} days): $X"
+- Use destination-specific estimates.
+- Budget tier: $3-8 per traveler per day.
+- Mid-range tier: $8-20 per traveler per day.
+- Premium tier: $20-40 per traveler per day.
+- Formula: daily_transport_cost × {form['numberOfPeople']} travelers × {num_days} days.
 
 SIGHTSEEING & ACTIVITIES CALCULATION:
-- Accurately calculate based on {form['numberOfPeople']} people and preferences.
-- Total formula: per-person-per-day rate × {num_days} days × {form['numberOfPeople']} people.
-- Include: entrance fees, guided tours, adventure activities, experiences.
-- Example format: "Sightseeing & Activities ({num_days} days, {form['numberOfPeople']} people): $X"
+- Use actual attraction ticket prices if available in live data.
+- Otherwise estimate conservatively. Do not default to large values like $300.
+- Formula: daily_activity_cost × {form['numberOfPeople']} travelers × {num_days} days.
 
-ROUND TRIP TRAVEL ({form['transportMode']}) - {form['origin']} ↔ {form['destination']}:
-- Transportation section already calculates total one-way travel cost for all travelers.
-- Round Trip Travel MUST be calculated as: roundTripCost = transportation.totalOneWayCost * 2
-- Example: if $250 one-way total → $500 round trip.
-- Explicitly state exactly this: "Round Trip Travel ({form['numberOfPeople']} person(s)): $TOTAL"
+ROUND TRIP TRAVEL ({form['transportMode']}):
+- NEVER hallucinate flight or transport costs. Use the data calculated in the TRANSPORT DETAILS section.
+- Formula: round_trip_cost = total_one_way_cost_for_all_travelers × 2.
+- CRITICAL: Do NOT estimate another value. If total one-way cost for 2 travelers is $208, Round Trip Cost MUST be $416.
 
-MISCELLANEOUS:
-- Include internet, taxes, emergency, tips, small expenses.
-- Add Miscellaneous before Total Estimate.
-- Example format: "Miscellaneous: $X"
+MISCELLANEOUS COSTS:
+- Includes tips, snacks, souvenirs, emergency purchases, and small unplanned expenses.
+- Formula: miscellaneous_cost = 10% of subtotal (Accommodation + Food + Local Transport + Activities + Round Trip Travel).
+- Display this separately below Round Trip Travel.
 
 TOTAL CALCULATION:
-- Final total MUST exactly equal: accommodation + food + localTransport + activities + roundTripTravel + miscellaneous
-- Clearly state: "Total Estimated Budget for {form['numberOfPeople']} Person(s): $TOTAL USD"
-- This is the TOTAL for the entire group for the entire trip.
+- Final Output Format MUST exactly follow this list:
+  Accommodation: $X
+  Food: $X
+  Local Transport: $X
+  Sightseeing & Activities: $X
+  Round Trip Travel ({form['transportMode']}): $X
+  Miscellaneous Costs: $X
+  
+  Total Estimated Budget: $TOTAL USD
 
-BUDGET ASSESSMENT:
-- Explain whether {form['budget']} USD is Sufficient, Tight, or Luxury.
-- Reference: ${form['budget'] / (form['numberOfPeople'] * num_days):.0f} per person per day.
-- If budget is tight -> reduce hotel tier and activity costs automatically while keeping itinerary structure intact.
+Also indicate:
+- Budget level (Budget, Mid-range, or Premium)
+- Number of travelers: {form['numberOfPeople']}
+- Number of days: {num_days}
+- Explain whether the user's budget of ${form['budget']} USD is Sufficient, Tight, or Luxury.
 
 Use line-by-line bullet points, not paragraphs.
 
@@ -393,11 +399,16 @@ async def generate_plan(*, user_id: str, email: str, full_name: str, form: dict[
         rag_query = f"Top things to do in {form['destination']} and travel tips matching preferences: {form.get('preferences', 'general sightseeing')}"
         cost_query = f"Average daily tourist cost in {form['destination']} for food, local transport, and activities"
 
+        if form['transportMode'].lower() == 'flight':
+            transport_coro = search_flights(form['origin'], form['destination'], form['startDate'])
+        else:
+            transport_coro = search_web(transport_query)
+
         print("Fetching real-time data concurrently...")
         results = await asyncio.gather(
             get_weather_insights(form["destination"], form["startDate"], form["endDate"]),
             search_hotels(form["destination"], form["startDate"], form["endDate"], form["numberOfPeople"]),
-            search_web(transport_query),
+            transport_coro,
             search_web(rag_query),
             search_web(cost_query),
             return_exceptions=True

@@ -350,8 +350,10 @@ export default function PlanPage() {
     const food = extractCostValue(lines, ['Food', 'Meals'])
     const localTransport = extractCostValue(lines, ['Local Transport', 'Local travel', 'Transport'])
     const activities = extractCostValue(lines, ['Sightseeing', 'Activities', 'Activities total', 'Tours'])
+    const roundTripTravel = extractCostValue(lines, ['Round Trip Travel', 'Round Trip'])
     const travelCost = extractCostValue(lines, ['Travel Cost (Origin', 'Outbound', 'Origin → Destination', 'Origin to Destination'])
     const returnTravelCost = extractCostValue(lines, ['Return Travel', 'Destination → Origin', 'Return'])
+    const miscellaneous = extractCostValue(lines, ['Miscellaneous'])
     const totalEstimated = extractCostValue(lines, ['Total Estimated Budget', 'Total Budget', 'Estimated Budget'])
 
     const daysCount = Math.max(1, days.length)
@@ -388,10 +390,10 @@ export default function PlanPage() {
     const calculatedLocalTransport = localTransport ?? Math.round(Math.max(baseBudget * 0.08, daysCount * peopleCount * (lowBudget ? 15 : 25)))
     const calculatedActivities = activities ?? Math.round(Math.max(baseBudget * 0.14, daysCount * peopleCount * (lowBudget ? 30 : 45)))
 
-    const calculatedTravelCost = travelCost ?? fallbackTravelCost
-    const calculatedReturnTravelCost = returnTravelCost ?? travelCost ?? fallbackReturnTravelCost
+    const calculatedTravelCost = roundTripTravel ? Math.round(roundTripTravel / 2) : (travelCost ?? fallbackTravelCost)
+    const calculatedReturnTravelCost = roundTripTravel ? Math.round(roundTripTravel / 2) : (returnTravelCost ?? travelCost ?? fallbackReturnTravelCost)
 
-    const itemSum = [
+    const subtotalItemSum = [
       calculatedAccommodation,
       calculatedFood,
       calculatedLocalTransport,
@@ -400,7 +402,10 @@ export default function PlanPage() {
       calculatedReturnTravelCost,
     ].reduce((sum, value) => sum + (typeof value === 'number' ? value : 0), 0)
 
-    const qualityTotal = [accommodation, food, localTransport, activities, travelCost, returnTravelCost].filter((v) => typeof v === 'number').length
+    const calculatedMiscellaneous = miscellaneous ?? Math.round(subtotalItemSum * 0.1)
+    const itemSum = subtotalItemSum + calculatedMiscellaneous
+
+    const qualityTotal = [accommodation, food, localTransport, activities, roundTripTravel || travelCost, miscellaneous].filter((v) => typeof v === 'number').length
     const useItemSum = qualityTotal >= 4
     const totalFromLines = useItemSum ? itemSum : undefined
     const shouldUseSum = typeof totalEstimated === 'number'
@@ -427,6 +432,7 @@ export default function PlanPage() {
       travelCost: calculatedTravelCost,
       returnTravelCost: calculatedReturnTravelCost,
       totalTravelCost: calculatedTravelCost + calculatedReturnTravelCost,
+      miscellaneous: calculatedMiscellaneous,
       totalEstimated: calculatedTotal,
       enteredBudget: baseBudget,
       remaining,
@@ -886,16 +892,23 @@ export default function PlanPage() {
                   <span>• Sightseeing & Activities</span>
                   <span className="font-semibold text-[color:var(--text)]">{formatCurrency(budgetSummary.activities)}</span>
                 </div>
-                <div className="flex items-center justify-between gap-3 rounded-2xl bg-[color:var(--glass-strong)] px-4 py-3 border border-[color:var(--glass-border)]">
-                  <div className="flex flex-col gap-1">
-                    <span>• Round Trip Travel ({form.transportMode})</span>
-                    <span className="text-[11px] text-[color:var(--text-muted)]">{form.origin} → {form.destination} → {form.origin}</span>
+                  <div className="flex items-center justify-between gap-3 rounded-2xl bg-[color:var(--glass-strong)] px-4 py-3 border border-[color:var(--glass-border)]">
+                    <div className="flex flex-col gap-1">
+                      <span>• Round Trip Travel ({form.transportMode})</span>
+                      <span className="text-[11px] text-[color:var(--text-muted)]">{form.origin} → {form.destination} → {form.origin}</span>
+                    </div>
+                    <span className="font-semibold text-[color:var(--text)]">
+                      {formatCurrency(budgetSummary.travelCost + budgetSummary.returnTravelCost)}
+                    </span>
                   </div>
-                  <span className="font-semibold text-[color:var(--text)]">
-                    {formatCurrency(budgetSummary.travelCost + budgetSummary.returnTravelCost)}
-                  </span>
+                  <div className="flex items-center justify-between gap-3 rounded-2xl bg-[color:var(--glass-strong)] px-4 py-3 border border-[color:var(--glass-border)]">
+                    <div className="flex flex-col gap-1">
+                      <span>• Miscellaneous Costs</span>
+                      <span className="text-[11px] text-[color:var(--text-muted)]">tips, souvenirs, etc. (10% of subtotal)</span>
+                    </div>
+                    <span className="font-semibold text-[color:var(--text)]">{formatCurrency(budgetSummary.miscellaneous)}</span>
+                  </div>
                 </div>
-              </div>
 
               <div className="mt-6 border-t border-[color:var(--glass-border)] pt-4">
                 <div className="flex items-center justify-between gap-3 text-sm text-[color:var(--text-muted)]">
