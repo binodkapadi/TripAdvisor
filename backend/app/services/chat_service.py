@@ -210,8 +210,8 @@ async def prepare_rag_stream(*, user_id: str, itinerary_id: str, question: str, 
                     }
                 )
         except Exception as e:
-            print(f"Error streaming response: {str(e)}")
-            error_msg = "The AI service is temporarily busy. Please try again in a few moments."
+            print(f"Error streaming response: {str(e)}", flush=True)
+            error_msg = "The AI service is temporarily busy (Backend Generation Error). Please try again in a few moments."
             yield error_msg
             
             await mongo.collection("chat_logs").insert_one(

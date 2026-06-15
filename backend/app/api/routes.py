@@ -746,14 +746,20 @@ async def ai_chat_stream(
             question=req.question,
             history=[h.model_dump() for h in req.history] if req.history else None
         )
+        origin = request.headers.get("origin", "")
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+        if origin:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+
         return StreamingResponse(
             generator, 
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
-            }
+            headers=headers
         )
     except Exception as e:
         print(f"Chat stream setup error: {str(e)}")

@@ -126,7 +126,7 @@ export default function ChatAssistant({ itineraryId }) {
       console.error('Chat error:', error)
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { type: 'assistant', content: "The AI service is temporarily busy. Please try again in a few moments." }
+        updated[updated.length - 1] = { type: 'assistant', content: "The AI service is temporarily busy (Network Error). Please try again in a few moments." }
         return updated
       })
     } finally {
