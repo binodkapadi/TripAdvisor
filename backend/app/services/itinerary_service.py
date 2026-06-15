@@ -93,7 +93,7 @@ LIVE RECOMMENDATIONS (WEB SEARCH):
 ---
 
 STRICT GENERATION RULES:
-- You MUST base your generation on the REAL-WORLD DATA provided above. Do not hallucinate prices, transport, or hotels if real data is provided.
+- You MUST base your generation on the REAL-WORLD DATA provided above. Do not hallucinate prices, transport, or hotels if real data is provided. If real-world data is missing for any section, explicitly label it as 'Estimated' and proceed using fallback rules.
 - Always adjust weather, pricing, and activities based on destination geography and season.
 - Classify destination as: Budget / Mid-range / Expensive (based on global tourism standard) and adjust all pricing accordingly.
 
@@ -122,7 +122,7 @@ STRICT GENERATION RULES:
   - Departure and arrival timing examples.
   - Booking recommendations and websites.
   - Comfort level and amenities for this transport mode.
-- Transportation pricing must be realistic, moderate, distance-based, city/route based, traveler-count based, and transport-class based. Do NOT overestimate or underestimate. Same inputs must always generate same outputs.
+- Transportation pricing must be realistic, moderate, distance-based, city/route based, traveler-count based, and transport-class based. Do NOT overestimate or underestimate. Outputs should be consistent for identical inputs under identical data conditions.
 
 IF TRANSPORT MODE = FLIGHT:
 - Mention:
@@ -293,7 +293,7 @@ RULES:
 - Mention famous attractions and hidden gems.
 - Make itinerary feel premium and exciting.
 - Do NOT repeat activities across days.
-- Each attraction must be unique across entire itinerary; reuse is forbidden unless it is a transport hub or unavoidable landmark.
+- Each attraction must be unique across entire itinerary; reuse is forbidden unless it is a transport hub or unavoidable landmark. If destination is small, reduce unique attractions logically while maintaining structure.
 - Do NOT generate generic plans.
 - Plans should feel personalized and intelligent.
 
