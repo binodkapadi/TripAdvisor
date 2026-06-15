@@ -10,19 +10,26 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from ..core.config import settings
 
 GENERATION_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
     "gemini-2.5-flash",
+    "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro"
 ]
 
 LIVE_SEARCH_SYNTHESIS_MODELS = [
+    "gemini-flash-lite-latest",
     "gemini-2.5-flash",
+    "gemini-flash-latest",
     "gemini-3.5-flash",
     "gemini-2.0-flash",
-    "gemini-2.5-flash-lite",
 ]
 
 FALLBACK_MODELS = [
-    "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
     "gemini-2.0-flash-lite",
 ]
 

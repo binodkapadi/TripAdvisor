@@ -11,7 +11,7 @@ class GeneratePlanRequest(BaseModel):
     startDate: str
     endDate: str
     budget: float = Field(ge=0)
-    transportMode: Literal['Flight', 'Train', 'Bus', 'Car']
+    transportMode: Literal['Flight', 'Train', 'Bus']
     travelType: Literal['Solo', 'Couple', 'Family', 'Group/Friends']
     numberOfPeople: int = Field(ge=1, le=50)
     preferences: str = Field(default='', max_length=2000)

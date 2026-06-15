@@ -391,8 +391,7 @@ class EmailService:
             "sender": {"email": sender_email, "name": sender_name},
             "to": [{"email": to_email}],
             "subject": subject,
-            "textContent": body_text,
-            "replyTo": {"email": sender_email, "name": sender_name}
+            "textContent": body_text
         }
 
         if body_html:

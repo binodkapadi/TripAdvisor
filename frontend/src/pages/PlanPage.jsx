@@ -362,7 +362,6 @@ export default function PlanPage() {
       Flight: 250,
       Train: 140,
       Bus: 90,
-      Car: 120,
     }
     const travelUnit = defaultTravelCost[form.transportMode] || 120
     const fallbackTravelCost = Math.round(travelUnit * peopleCount)
@@ -439,7 +438,7 @@ export default function PlanPage() {
     }
   }, [result, form, days])
 
-
+  const isFormValid = form.origin && form.destination && form.startDate && form.endDate && form.budget && form.transportMode && form.travelType && form.people
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-20">
@@ -642,7 +641,6 @@ export default function PlanPage() {
               <option value="Flight">Flight</option>
               <option value="Train">Train</option>
               <option value="Bus">Bus</option>
-              <option value="Car">Car</option>
             </select>
           </label>
 
@@ -737,10 +735,11 @@ export default function PlanPage() {
 
           <div className="md:col-span-2">
             <motion.button
-              className="w-full rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110 disabled:opacity-60"
+              className="w-full rounded-2xl bg-gradient-to-r from-orange-400 to-red-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
               whileHover={{ y: -1 }}
-              disabled={generating}
+              disabled={generating || !isFormValid}
               type="submit"
+              title={!isFormValid ? "Please fill all required details" : ""}
             >
               {generating ? 'Generating Plan...' : 'Generate Plan'}
             </motion.button>

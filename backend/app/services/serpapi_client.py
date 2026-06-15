@@ -114,3 +114,48 @@ async def search_web(query: str) -> str:
             print(f"Serper search error: {e}")
 
     return "No live search results available."
+
+
+async def search_hotels(destination: str, check_in: str, check_out: str, adults: int = 1) -> str:
+    """Fetches real hotel data from Google Hotels via SerpAPI."""
+    if not settings.SERPAPI_KEY:
+        return "SerpAPI key not configured. Using fallback estimations."
+
+    url = "https://serpapi.com/search.json"
+    params = {
+        "engine": "google_hotels",
+        "q": destination,
+        "check_in_date": check_in,
+        "check_out_date": check_out,
+        "adults": adults,
+        "currency": "USD",
+        "api_key": settings.SERPAPI_KEY,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            data = r.json()
+
+        properties = data.get("properties") or []
+        if not properties:
+            return f"No hotels found in {destination} for the given dates."
+
+        hotel_list = []
+        for prop in properties[:5]:  # Get top 5 hotels
+            name = prop.get("name", "Unknown Hotel")
+            # Extract rate correctly (Google Hotels API usually provides "rate_per_night" or "total_rate")
+            price = prop.get("rate_per_night", {}).get("lowest", "N/A")
+            if price == "N/A":
+                price = prop.get("total_rate", {}).get("lowest", "N/A")
+            rating = prop.get("overall_rating", "N/A")
+            link = prop.get("link", "")
+            hotel_list.append(f"- {name}: ${price}/night (Rating: {rating}) [Link: {link}]")
+
+        if hotel_list:
+            return f"Live Hotel Data for {destination} ({check_in} to {check_out}):\n" + "\n".join(hotel_list)
+        return f"No specific hotel pricing details found for {destination}."
+    except Exception as e:
+        print(f"SerpAPI Hotels error: {e}")
+        return f"Could not fetch live hotel data for {destination} due to an error."
