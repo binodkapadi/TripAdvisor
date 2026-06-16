@@ -29,6 +29,9 @@ class Settings(BaseSettings):
 
     # Gemini
     GEMINI_API_KEY: str | None = None
+
+    # Groq
+    GROQ_API_KEY: str | None = None
     
     # Web Search Providers
     TAVILY_API_KEY: str | None = None

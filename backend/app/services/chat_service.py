@@ -90,11 +90,11 @@ CORE RESPONSIBILITIES:
 * Maintain a modern UI/UX format in your response—never robotic
 
 RESTRICTIONS:
-- You must ONLY answer questions related to the generated itinerary, travel, or currency conversion.
+- You must ONLY answer questions related to the generated itinerary, the destination, travel, or currency conversion.
 - You are fully authorized to answer ANY currency conversion request for ANY currency in the world.
-- If the user asks an out-of-bounds question, you MUST NOT generate an answer to their question. Instead, reply EXACTLY with a polite message like: "I am not able to answer these questions. Please ask questions related to your trip."
-- NEVER break character. NEVER answer unrelated questions even if you know the answer.
-- Answer directly from the provided itinerary data below. Do NOT regenerate or restate the entire itinerary unless explicitly requested.
+- If the user asks an out-of-bounds question (e.g., coding, politics, math), you MUST NOT generate an answer. Instead, reply EXACTLY with: "I am not able to answer these questions. Please ask questions related to your trip."
+- NEVER break character. NEVER answer unrelated non-travel questions even if you know the answer.
+- Prioritize information from the itinerary data below, but you MAY use your general knowledge to answer questions about tourist attractions, museums, food, or culture for the destination. Do NOT regenerate the entire itinerary unless explicitly requested.
 
 UI/UX FORMATTING:
 - Keep your answers VERY SHORT, SWEET, AND CONCISE. Maximum 3-5 sentences unless explicitly requested otherwise.
@@ -140,7 +140,7 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
     print(f"Sending prompt to Gemini ({len(prompt)} characters) with manual web search")
     
     try:
-        from .gemini_client import generate_text
+        from ..core.config import settings
         # Save user message first
         await mongo.collection("chat_logs").insert_one(
             {
@@ -152,8 +152,19 @@ async def rag_answer(*, user_id: str, itinerary_id: str, question: str, history:
             }
         )
 
-        answer = await generate_text(prompt, use_search=True)
-        print(f"Gemini response length: {len(answer)}")
+        answer = None
+        if settings.GROQ_API_KEY:
+            try:
+                from .groq_client import generate_text as groq_generate
+                answer = await groq_generate(prompt)
+                print(f"Groq response length: {len(answer)}")
+            except Exception as e:
+                print(f"Groq generation failed: {e}. Falling back to Gemini...")
+        
+        if not answer:
+            from .gemini_client import generate_text
+            answer = await generate_text(prompt, use_search=True)
+            print(f"Gemini response length: {len(answer)}")
         
         await mongo.collection("chat_logs").insert_one(
             {
@@ -178,7 +189,7 @@ async def prepare_rag_stream(*, user_id: str, itinerary_id: str, question: str, 
     if search_results and "unavailable" not in search_results:
         prompt += f"\n\n[LIVE WEB SEARCH RESULTS FOR '{question}']\n{search_results}\n"
     
-    from .gemini_client import async_stream_text
+    from ..core.config import settings
     
     # Save user message first
     await mongo.connect()
@@ -195,9 +206,22 @@ async def prepare_rag_stream(*, user_id: str, itinerary_id: str, question: str, 
     async def stream_generator():
         full_answer = ""
         try:
-            async for chunk in async_stream_text(prompt, use_search=True):
-                full_answer += chunk
-                yield chunk
+            used_groq = False
+            if settings.GROQ_API_KEY:
+                try:
+                    from .groq_client import async_stream_text as groq_stream
+                    async for chunk in groq_stream(prompt):
+                        full_answer += chunk
+                        yield chunk
+                    used_groq = True
+                except Exception as e:
+                    print(f"Groq streaming failed: {e}. Falling back to Gemini...", flush=True)
+            
+            if not used_groq:
+                from .gemini_client import async_stream_text
+                async for chunk in async_stream_text(prompt, use_search=True):
+                    full_answer += chunk
+                    yield chunk
                 
             if full_answer:
                 await mongo.collection("chat_logs").insert_one(
