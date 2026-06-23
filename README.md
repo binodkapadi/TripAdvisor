@@ -111,15 +111,24 @@ First put all required dependencies inside requirements.txt file and then run:
 
 ### B) Frontend Setup (React + Vite) [Open New Terminal]
 
-    mkdir frontend
-    cd frontend
-
     npm create vite@latest
-
-    Select:
-           Framework: React
-           Variant: JavaScript
-
+    
+    ◇  Project name:
+    │  frontend
+    │
+    ◇  Select a framework:
+    │  React
+    │
+    ◇  Select a variant:
+    │  JavaScript
+    │
+    ◇  Use ESLint instead of Oxlint?
+    │  No (Oxlint)
+    │
+    ◇  Install with npm and start now?
+    │  Yes
+    │
+    
 Install dependencies:
 
     npm install
