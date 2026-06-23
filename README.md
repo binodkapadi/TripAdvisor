@@ -72,12 +72,60 @@ First put all required dependencies inside requirements.txt file and then run:
     pip install -r requirements.txt
 
 
-#### Configure Environment Variables (.env)
+### Configure Environment Variables (.env) (Local Host Setup)
+
+    # MongoDB
+    MONGODB_URI=your_mongodb_uri
+    MONGODB_DBNAME=your_database_name
+
+    # SerpAPI (Google Places autocomplete & search fallback)
+    SERPAPI_KEY=your_serpapi_key
+
+    # Web Search Providers 
+    TAVILY_API_KEY=your_travily_api
+    SERPER_API_KEY=your_serper_api
+
+    # OpenWeather
+    OPENWEATHER_API_KEY=your_openweather_api_key
+
+    # Gemini
+    GEMINI_API_KEY=your_gemini_api_key
+
+    # Groq
+    GROQ_API_KEY=your_groq_api_key
+
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+    GITHUB_CLIENT_ID=your_github_client_id
+    GITHUB_CLIENT_SECRET=your_github_client_secret
+
+    LINKEDIN_CLIENT_ID=your_linkedin_client_id
+    LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
+
+    # SMTP (for sending itinerary + OTP codes + notifications)
+    SMTP_HOST=smtp.gmail.com
+    SMTP_PORT=587
+    SMTP_USER=your_email@gmail.com
+    SMTP_PASSWORD=your_app_password
+    EMAIL_FROM=your_email@gmail.com
+    NOTIFY_EMAIL=your_email@gmail.com
+
+### For Production environment Variables (Put these all inside Render environment variable)
+
+    #If you have hosted frontend urls in multiple platfrom (like vercel or netlify)
+    FRONTEND_URLS=your_frontend_vercel_url, your_frontend_netlify_url
+
+    Note = if you have hosted frontend in single platform only(ie vercel) then put(single url)
+    FRONTEND_URLS=your_frontend_vercel_url
 
     MONGODB_URI=your_mongodb_uri
     MONGODB_DBNAME=your_database_name
 
     SERPAPI_KEY=your_serpapi_key
+
+    TAVILY_API_KEY=your_travily_api
+    SERPER_API_KEY=your_serper_api
 
     OPENWEATHER_API_KEY=your_openweather_api_key
 
@@ -94,22 +142,16 @@ First put all required dependencies inside requirements.txt file and then run:
     LINKEDIN_CLIENT_ID=your_linkedin_client_id
     LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
 
-    # For Local Environment
-
-    SMTP_HOST=smtp.gmail.com
-    SMTP_PORT=587
-    SMTP_USER=your_email@gmail.com
-    SMTP_PASSWORD=your_app_password
-    EMAIL_FROM=your_email@gmail.com
-    NOTIFY_EMAIL=your_email@gmail.com
-
-    #For Production Only
     # Brevo Email API Config (Required/Recommended for Render Free Tier to bypass SMTP port blocking)
 
-    # BREVO_API_KEY=your_brevo_api_key_here
-    # ENVIRONMENT=production
-    # SENDER_EMAIL=your_email@gmail.com
-    # SENDER_NAME = TripAdvisor
+    BREVO_API_KEY=your_brevo_api_key_here
+    ENVIRONMENT=production
+    SENDER_EMAIL=your_email@gmail.com
+    SENDER_NAME = TripAdvisor
+
+    #For Production only (Beacuse while signing through google, github and linkden or for email purpose the backend must know who i am)(put inside render environment vairables)
+
+    BASE_URL=your_production_backend_url
 
 ### B) Frontend Setup (React + Vite) [Open New Terminal]
 
