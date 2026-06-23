@@ -116,7 +116,7 @@ First put all required dependencies inside requirements.txt file and then run:
     #If you have hosted frontend urls in multiple platfrom (like vercel or netlify)
     FRONTEND_URLS=your_frontend_vercel_url, your_frontend_netlify_url
 
-    Note = if you have hosted frontend in single platform only(ie vercel) then put(single url)
+    **[Note] if you have hosted frontend in single platform only(ie vercel) then put(single url)
     FRONTEND_URLS=your_frontend_vercel_url
 
     MONGODB_URI=your_mongodb_uri
@@ -184,11 +184,11 @@ Install dependencies:
 #### Frontend .env Configuration
 Local Backend url
 
-    VITE_API_URL=http://127.0.0.1:8000
+    VITE_API_BASE_URL=http://127.0.0.1:8000
 
 For Production only(Replace local backend url and put production backend url while pushing code to github only then after succesful pushing put local url back)
 
-    VITE_API_URL=Your_Production_URL (Production URL)
+    VITE_API_BASE_URL=Your_Production_URL (Production URL)
 
 
 ## Step 3: RUN PROJECT LOCALLY
