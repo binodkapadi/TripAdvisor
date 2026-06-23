@@ -113,7 +113,7 @@ First put all required dependencies inside requirements.txt file and then run:
 
 ### For Production environment Variables (Put these all inside Render environment variable)
 
-    #If you have hosted frontend urls in multiple platfrom (like vercel or netlify)
+    #If you have hosted frontend urls in multiple platforms (like vercel or netlify)
     FRONTEND_URLS=your_frontend_vercel_url, your_frontend_netlify_url
 
     **[Note] if you have hosted frontend in single platform only(ie vercel) then put(single url)
