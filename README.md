@@ -173,6 +173,14 @@ First put all required dependencies inside requirements.txt file and then run:
     │  Yes
     │
     
+First up all stop the server by clicking :
+
+    ctrl + c
+
+Go inside frontend folder : 
+    
+    cd frontend
+
 Install dependencies:
 
     npm install
@@ -221,6 +229,16 @@ To stop the [Frontend and Backend] server:
 After completing your work:
 
     deactivate
+
+### If you want to come back from the folder 
+
+    cd ..
+
+eg=>
+
+PS C:\Users\binod\OneDrive - ioepc.edu.np\Desktop\TripAdvisor\frontend> cd ..
+PS C:\Users\binod\OneDrive - ioepc.edu.np\Desktop\TripAdvisor> 
+
 
 # FEATURES
 
