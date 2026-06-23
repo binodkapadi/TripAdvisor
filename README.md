@@ -83,6 +83,8 @@ First put all required dependencies inside requirements.txt file and then run:
 
     GEMINI_API_KEY=your_gemini_api_key
 
+    GROQ_API_KEY=your_groq_api_key
+
     GOOGLE_CLIENT_ID=your_google_client_id
     GOOGLE_CLIENT_SECRET=your_google_client_secret
 
@@ -138,10 +140,13 @@ Install dependencies:
 
 
 #### Frontend .env Configuration
+Local Backend url
 
     VITE_API_URL=http://127.0.0.1:8000
 
-    # VITE_API_URL=Your_Production_URL (Production URL if you want run locally leave as it is it will not effect your code.)
+For Production only(Replace local backend url and put production backend url while pushing code to github only then after succesful pushing put local url back)
+
+    VITE_API_URL=Your_Production_URL (Production URL)
 
 
 ## Step 3: RUN PROJECT LOCALLY
@@ -162,22 +167,6 @@ Frontend
 
     cd frontend
     npm run dev
-
-# Leave  [Step 4] if you are running project in Local Host only.
-
-## Step 4: MUST NEED TO DO [fOR PRODUCTION LEVEL OR HOSTING]
-
-### Inside Backend->app->api Folder[routes.py] [if you are running In production level or hosting]then
-Replace the portion of code from this file routes.py[line 34-41]
-
-    def get_base_url() -> str:
-        if settings.is_production:
-            return "Your_Backend_Production_Url"
-        return settings.BASE_URL
-
-
-    def get_default_frontend_url() -> str:
-        return "Your_Frontend_Production_URL"
 
 
 # FEATURES

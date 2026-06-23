@@ -32,13 +32,12 @@ from ..core.rate_limiter import limiter
 router = APIRouter()
 
 def get_base_url() -> str:
-    if settings.is_production:
-        return "https://tripadvisor-binodkapadi.onrender.com"
     return settings.BASE_URL
 
-
 def get_default_frontend_url() -> str:
-    return "https://tripwithbinod.vercel.app"
+    if settings.FRONTEND_URLS:
+        return settings.FRONTEND_URLS.split(",")[0].strip().rstrip("/")
+    return "http://localhost:5173"
 
 
 def get_frontend_url_from_state(state: str | None) -> str:
