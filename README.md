@@ -237,6 +237,7 @@ After completing your work:
 eg=>
 
 PS C:\Users\binod\OneDrive - ioepc.edu.np\Desktop\TripAdvisor\frontend> cd ..
+
 PS C:\Users\binod\OneDrive - ioepc.edu.np\Desktop\TripAdvisor> 
 
 
