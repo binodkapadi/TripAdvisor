@@ -210,6 +210,17 @@ Frontend
     cd frontend
     npm run dev
 
+### STOP APPLICATION
+
+To stop the [Frontend and Backend] server:
+
+    CTRL + C
+
+### DEACTIVATE VIRTUAL ENVIRONMENT
+
+After completing your work:
+
+    deactivate
 
 # FEATURES
 
