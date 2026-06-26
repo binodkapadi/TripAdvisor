@@ -611,13 +611,21 @@ async def upload_profile_photo(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Compress image to prevent MongoDB Compass crashes with large strings
+    from ..services.image_service import compress_base64_image
+    
+    try:
+        compressed_b64, mime_type = compress_base64_image(payload.imageBase64)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     # Update user profile image
     await mongo.collection("users").update_one(
         {"_id": actual_user_id},
         {
             "$set": {
-                "profileImageBase64": payload.imageBase64,
-                "profileImageMimeType": payload.mimeType,
+                "profileImageBase64": compressed_b64,
+                "profileImageMimeType": mime_type,
                 "updatedAt": datetime.now(timezone.utc)
             }
         }

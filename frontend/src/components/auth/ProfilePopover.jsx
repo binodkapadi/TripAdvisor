@@ -15,6 +15,12 @@ export default function ProfilePopover() {
     setUploadError(null)
     setUploadLoading(true)
 
+    if (file.size > 1024 * 1024) {
+      setUploadError('Please upload photo less than 1MB')
+      setUploadLoading(false)
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = async () => {
       try {
