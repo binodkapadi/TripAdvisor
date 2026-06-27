@@ -105,6 +105,11 @@ export default function ProfilePopover() {
                 </div>
               </div>
 
+              {uploadError && (
+                <div className="mx-3 mb-2 rounded-xl bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
+                  {uploadError}
+                </div>
+              )}
               <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-[color:var(--text-soft)] hover:bg-[color:var(--glass-hover)] hover:text-[color:var(--text)] transition">
                 <Settings size={16} />
                 Settings
@@ -121,11 +126,6 @@ export default function ProfilePopover() {
                   event.target.value = ''
                 }}
               />
-              {uploadError && (
-                <div className="mx-3 mt-2 rounded-xl bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
-                  {uploadError}
-                </div>
-              )}
             </div>
 
             <div className="p-2 border-t border-[color:var(--glass-border)]">
