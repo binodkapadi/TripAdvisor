@@ -203,15 +203,29 @@ For Production only(Replace local backend url and put production backend url whi
 
 Run Backend and Frontend in separate terminals.
 
+In 1st terminal:
+
 Backend
+
+If the virtual environment is already activated, you do not need to activate it again. However, if you open VS Code fresh or start a new terminal session, you must activate the virtual environment before running the backend.(Follow below steps).
 
     cd backend
     venv\Scripts\activate
     uvicorn app.main:app --reload
 
+or
+
+If the virtual environment is already activated inside backend terminal at that time simply run below command to start backend server.
+
+    uvicorn app.main:app --reload
+
+or
+
 If you do not create an `app` folder and your `main.py` file is directly inside backend folder, then run:
 
     uvicorn main:app --reload
+
+In 2nd terminal:
 
 Frontend
 
