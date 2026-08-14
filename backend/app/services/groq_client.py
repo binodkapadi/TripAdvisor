@@ -10,9 +10,16 @@ from ..core.config import settings
 
 GROQ_MODELS = [
     "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "qwen/qwen3-32b",
-    "groq/compound-mini",
+    "gpt-oss-20b",
+    "llama-3.2-3b-preview",
+    "llama-3.2-1b-preview",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+    "qwen-2.5-coder-32b",
+    "qwen-2.5-72b-instruct",
+    "deepseek-r1-distill-llama-70b",
 ]
 
 @retry(wait=wait_exponential(min=1, max=10), stop=stop_after_attempt(3))
